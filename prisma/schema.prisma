@@ -1,0 +1,285 @@
+generator client {
+  provider            = "prisma-client"
+  output              = "../generated/prisma"
+  importFileExtension = "ts"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum CommunityRole {
+  MEMBER
+  MODERATOR
+}
+
+enum PostType {
+  NEED_ROOM
+  ROOM_AVAILABLE
+  NEED_FLATMATE
+  PG_AVAILABLE
+}
+
+enum PostStatus {
+  DRAFT
+  ACTIVE
+  CLOSED
+  ARCHIVED
+}
+
+enum GenderPreference {
+  ANY
+  WOMEN
+  MEN
+}
+
+enum PropertyType {
+  APARTMENT
+  INDEPENDENT_HOUSE
+  PG
+  HOSTEL
+  OTHER
+}
+
+enum RoomType {
+  PRIVATE_ROOM
+  SHARED_ROOM
+  ENTIRE_PLACE
+}
+
+enum FurnishingStatus {
+  FURNISHED
+  SEMI_FURNISHED
+  UNFURNISHED
+}
+
+enum DietPreference {
+  VEGETARIAN
+  NON_VEGETARIAN
+  EGGETARIAN
+  VEGAN
+}
+
+enum HabitFrequency {
+  NEVER
+  OCCASIONALLY
+  REGULARLY
+}
+
+enum SleepSchedule {
+  EARLY_BIRD
+  BALANCED
+  NIGHT_OWL
+}
+
+enum CleanlinessLevel {
+  RELAXED
+  MODERATE
+  VERY_TIDY
+}
+
+enum PetPreference {
+  HAS_PETS
+  PET_FRIENDLY
+  PREFERS_NO_PETS
+}
+
+enum OccupationStatus {
+  STUDENT
+  WORKING_PROFESSIONAL
+  SELF_EMPLOYED
+  FREELANCER
+  OTHER
+}
+
+model User {
+  id               String            @id @default(cuid())
+  authUserId       String            @unique @db.Uuid
+  name             String
+  email            String?           @unique
+  dateOfBirth      DateTime?         @db.Date
+  profession       String?
+  companyOrCollege String?
+  bio              String?           @db.VarChar(500)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  memberships      CommunityMember[]
+  posts            Post[]
+  preferences      UserPreferences?
+  conversationsAsParticipantOne Conversation[] @relation("ConversationParticipantOne")
+  conversationsAsParticipantTwo Conversation[] @relation("ConversationParticipantTwo")
+  sentMessages     Message[]
+  sentCommunityMessages CommunityMessage[]
+
+  @@index([name])
+}
+
+model Conversation {
+  id                       String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  participantOneId         String
+  participantTwoId         String
+  participantOneLastReadAt DateTime? @db.Timestamptz(3)
+  participantTwoLastReadAt DateTime? @db.Timestamptz(3)
+  lastMessageAt            DateTime? @db.Timestamptz(3)
+  createdAt                DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt                DateTime  @updatedAt @db.Timestamptz(3)
+  participantOne           User      @relation("ConversationParticipantOne", fields: [participantOneId], references: [id], onDelete: Cascade)
+  participantTwo           User      @relation("ConversationParticipantTwo", fields: [participantTwoId], references: [id], onDelete: Cascade)
+  messages                 Message[]
+
+  @@unique([participantOneId, participantTwoId])
+  @@index([participantOneId, lastMessageAt(sort: Desc)])
+  @@index([participantTwoId, lastMessageAt(sort: Desc)])
+}
+
+model Message {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversationId String       @db.Uuid
+  senderId       String
+  body           String       @db.VarChar(2000)
+  createdAt      DateTime     @default(now()) @db.Timestamptz(3)
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt, id])
+  @@index([senderId])
+}
+
+model City {
+  id          String     @id @default(cuid())
+  name        String
+  slug        String     @unique
+  state       String
+  countryCode String     @default("IN") @db.Char(2)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  localities  Locality[]
+
+  @@unique([name, state, countryCode])
+  @@index([state])
+}
+
+model Locality {
+  id          String                  @id @default(cuid())
+  name        String
+  slug        String
+  cityId      String
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+  city        City                    @relation(fields: [cityId], references: [id], onDelete: Restrict)
+  community   Community?
+  preferredBy UserPreferredLocality[]
+
+  @@unique([cityId, slug])
+  @@index([cityId, name])
+}
+
+model Community {
+  id          String            @id @default(cuid())
+  name        String
+  slug        String            @unique
+  description String?           @db.VarChar(500)
+  isActive    Boolean           @default(true)
+  localityId  String            @unique
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  locality    Locality          @relation(fields: [localityId], references: [id], onDelete: Cascade)
+  members     CommunityMember[]
+  posts       Post[]
+  messages    CommunityMessage[]
+
+  @@index([isActive])
+}
+
+model CommunityMember {
+  userId      String
+  communityId String
+  role        CommunityRole @default(MEMBER)
+  joinedAt    DateTime      @default(now())
+  lastChatReadAt DateTime?   @db.Timestamptz(3)
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  community   Community     @relation(fields: [communityId], references: [id], onDelete: Cascade)
+
+  @@id([userId, communityId])
+  @@index([communityId, joinedAt])
+}
+
+model CommunityMessage {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  communityId String
+  senderId    String
+  body        String    @db.VarChar(2000)
+  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
+  community   Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  sender      User      @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([communityId, createdAt, id])
+  @@index([senderId])
+}
+
+model Post {
+  id               String            @id @default(cuid())
+  type             PostType
+  status           PostStatus        @default(ACTIVE)
+  title            String            @db.VarChar(140)
+  description      String            @db.VarChar(2000)
+  monthlyAmountMin Int?
+  monthlyAmountMax Int?
+  securityDeposit  Int?
+  currency         String            @default("INR") @db.Char(3)
+  moveInDate       DateTime?         @db.Date
+  genderPreference GenderPreference  @default(ANY)
+  propertyType     PropertyType?
+  roomType         RoomType?
+  furnishingStatus FurnishingStatus?
+  bedrooms         Int?
+  bathrooms        Int?
+  currentOccupants Int?
+  availableSpots   Int?
+  mealsIncluded    Boolean?
+  amenities        String[]          @default([])
+  tags             String[]          @default([])
+  authorId         String
+  communityId      String
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  publishedAt      DateTime?
+  author           User              @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  community        Community         @relation(fields: [communityId], references: [id], onDelete: Cascade)
+
+  @@index([authorId, createdAt])
+  @@index([communityId, type, status, createdAt])
+  @@index([moveInDate])
+}
+
+model UserPreferences {
+  id                  String                  @id @default(cuid())
+  userId              String                  @unique
+  budgetMin           Int?
+  budgetMax           Int?
+  preferredMoveInDate DateTime?               @db.Date
+  diet                DietPreference?
+  smoking             HabitFrequency?
+  drinking            HabitFrequency?
+  sleepSchedule       SleepSchedule?
+  cleanliness         CleanlinessLevel?
+  pets                PetPreference?
+  occupationStatus    OccupationStatus?
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+  user                User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  preferredLocalities UserPreferredLocality[]
+}
+
+model UserPreferredLocality {
+  preferencesId String
+  localityId    String
+  priority      Int             @default(0)
+  createdAt     DateTime        @default(now())
+  preferences   UserPreferences @relation(fields: [preferencesId], references: [id], onDelete: Cascade)
+  locality      Locality        @relation(fields: [localityId], references: [id], onDelete: Cascade)
+
+  @@id([preferencesId, localityId])
+  @@index([localityId])
+  @@index([preferencesId, priority])
+}
