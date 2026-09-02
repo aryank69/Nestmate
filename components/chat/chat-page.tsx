@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { SafetyActions } from "@/components/trust-safety/safety-actions";
 import {
   chatInitials,
   cleanMessageBody,
@@ -66,11 +67,24 @@ export function ChatPage({
   currentUser,
   initialConversations,
   initialUsers,
+  initialConversationId,
+  initialUserAuthId,
+  initialPostId,
 }: {
   currentUser: ChatIdentity;
   initialConversations: ChatConversation[];
   initialUsers: ChatUser[];
+  initialConversationId: string | null;
+  initialUserAuthId: string | null;
+  initialPostId: string | null;
 }) {
+  const validInitialConversationId =
+    initialConversationId &&
+    initialConversations.some(
+      (conversation) => conversation.id === initialConversationId,
+    )
+      ? initialConversationId
+      : null;
   const [supabase] = useState(() => createSupabaseBrowserClient());
   const [conversations, setConversations] = useState<ChatConversation[]>(
     initialConversations,
@@ -79,18 +93,23 @@ export function ChatPage({
     useState<ChatUser[]>(initialUsers);
   const [selectedConversationId, setSelectedConversationId] = useState<
     string | null
-  >(null);
+  >(validInitialConversationId);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [messageDraft, setMessageDraft] = useState("");
   const [userSearch, setUserSearch] = useState("");
   const [isDirectoryOpen, setIsDirectoryOpen] = useState(false);
-  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(
+    Boolean(validInitialConversationId),
+  );
   const [isSending, setIsSending] = useState(false);
   const [isStartingConversation, setIsStartingConversation] = useState(false);
   const [realtimeState, setRealtimeState] =
     useState<RealtimeState>("connecting");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const messageEndRef = useRef<HTMLDivElement>(null);
+  const initialNavigationHandledRef = useRef(
+    Boolean(validInitialConversationId),
+  );
 
   const selectedConversation = conversations.find(
     (conversation) => conversation.id === selectedConversationId,
@@ -224,35 +243,62 @@ export function ChatPage({
     messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const selectConversation = (conversationId: string) => {
+  const selectConversation = useCallback((conversationId: string) => {
     setMessages([]);
     setIsLoadingMessages(true);
     setSelectedConversationId(conversationId);
     setIsDirectoryOpen(false);
     setErrorMessage(null);
-  };
+  }, []);
 
-  const startConversation = async (user: ChatUser) => {
-    setIsStartingConversation(true);
-    setErrorMessage(null);
+  const startConversation = useCallback(
+    async (user: ChatUser, sourcePostId?: string | null) => {
+      setIsStartingConversation(true);
+      setErrorMessage(null);
 
-    const { data, error } = await supabase.rpc("start_direct_conversation", {
-      other_auth_user_id: user.authUserId,
-    });
+      const { data, error } = await supabase.rpc("start_direct_conversation", {
+        other_auth_user_id: user.authUserId,
+        source_post_id: sourcePostId ?? null,
+      });
 
-    if (error || typeof data !== "string") {
-      setErrorMessage("We could not start this conversation.");
+      if (error || typeof data !== "string") {
+        setErrorMessage("We could not start this conversation.");
+        setIsStartingConversation(false);
+        return;
+      }
+
+      await refreshConversations();
+      setMessages([]);
+      setIsLoadingMessages(true);
+      setSelectedConversationId(data);
+      setIsDirectoryOpen(false);
       setIsStartingConversation(false);
-      return;
-    }
+    },
+    [refreshConversations, supabase],
+  );
 
-    await refreshConversations();
-    setMessages([]);
-    setIsLoadingMessages(true);
-    setSelectedConversationId(data);
-    setIsDirectoryOpen(false);
-    setIsStartingConversation(false);
-  };
+  useEffect(() => {
+    if (initialNavigationHandledRef.current) return;
+
+    if (initialUserAuthId) {
+      const targetUser = availableUsers.find(
+        (user) => user.authUserId === initialUserAuthId,
+      );
+      if (targetUser) {
+        initialNavigationHandledRef.current = true;
+        const navigationTimer = window.setTimeout(
+          () => void startConversation(targetUser, initialPostId),
+          0,
+        );
+        return () => window.clearTimeout(navigationTimer);
+      }
+    }
+  }, [
+    availableUsers,
+    initialPostId,
+    initialUserAuthId,
+    startConversation,
+  ]);
 
   const sendMessage = async (event?: FormEvent<HTMLFormElement>) => {
     event?.preventDefault();
@@ -304,6 +350,23 @@ export function ChatPage({
       user.profession?.toLocaleLowerCase("en-IN").includes(query)
     );
   });
+
+  const handleBlockedUser = (blockedUserId: string) => {
+    setAvailableUsers((current) =>
+      current.filter((user) => user.id !== blockedUserId),
+    );
+    setConversations((current) =>
+      current.filter(
+        (conversation) => conversation.otherUser.id !== blockedUserId,
+      ),
+    );
+
+    if (selectedConversation?.otherUser.id === blockedUserId) {
+      setMessages([]);
+      setSelectedConversationId(null);
+      setMessageDraft("");
+    }
+  };
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -527,6 +590,18 @@ export function ChatPage({
                   <CheckCheck aria-hidden="true" className="size-3.5" />
                   Private chat
                 </span>
+                <SafetyActions
+                  target={{
+                    type: "USER",
+                    id: selectedConversation.otherUser.id,
+                    label: "user",
+                  }}
+                  user={{
+                    id: selectedConversation.otherUser.id,
+                    name: selectedConversation.otherUser.name,
+                  }}
+                  onBlocked={handleBlockedUser}
+                />
               </header>
 
               <div
@@ -580,6 +655,22 @@ export function ChatPage({
                             >
                               {formatMessageTime(message.createdAt)}
                             </p>
+                            {!isOwnMessage ? (
+                              <div className="mt-1 flex justify-end">
+                                <SafetyActions
+                                  target={{
+                                    type: "DIRECT_MESSAGE",
+                                    id: message.id,
+                                    label: "message",
+                                  }}
+                                  user={{
+                                    id: selectedConversation.otherUser.id,
+                                    name: selectedConversation.otherUser.name,
+                                  }}
+                                  onBlocked={handleBlockedUser}
+                                />
+                              </div>
+                            ) : null}
                           </div>
                         </div>
                       );

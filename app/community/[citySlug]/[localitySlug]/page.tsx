@@ -6,22 +6,28 @@ import {
   loadCommunityLocations,
   loadCommunityRoom,
 } from "@/lib/community-data";
+import { parseCommunityPostFilters } from "@/lib/discovery";
 import { loadUserProfile } from "@/lib/profile-data";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { UserProfile } from "@/types/profile";
+import type { SearchParamRecord } from "@/types/discovery";
 
 export default async function LocalityCommunityRoomPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ citySlug: string; localitySlug: string }>;
+  searchParams: Promise<SearchParamRecord>;
 }) {
   const { citySlug, localitySlug } = await params;
+  const query = await searchParams;
+  const filters = parseCommunityPostFilters(query);
   const supabase = await createSupabaseServerClient();
   const { data } = await supabase.auth.getClaims();
   const authUserId = data?.claims?.sub ?? null;
 
   const [room, locations] = await Promise.all([
-    loadCommunityRoom(citySlug, localitySlug, authUserId),
+    loadCommunityRoom(citySlug, localitySlug, authUserId, filters),
     loadCommunityLocations(),
   ]);
 
@@ -44,11 +50,14 @@ export default async function LocalityCommunityRoomPage({
           community={room.community}
           locations={locations}
           posts={room.posts}
+          postTypeCounts={room.postTypeCounts}
+          filters={filters}
           viewerProfile={viewerProfile}
           isAuthenticated={Boolean(authUserId)}
           isMember={room.isMember}
           chatIdentity={room.chatIdentity}
           initialChatUnreadCount={room.chatUnreadCount}
+          initialView={query.view === "chat" ? "chat" : "posts"}
         />
       </main>
     </>

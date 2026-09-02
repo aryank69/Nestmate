@@ -1,13 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { startTransition, useActionState, useMemo, useState } from "react";
+import {
+  startTransition,
+  useActionState,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   AlertCircle,
+  Armchair,
   ArrowLeft,
+  Bath,
   BedDouble,
   Building2,
   CalendarDays,
+  Car,
   Check,
   CheckCircle2,
   ChevronDown,
@@ -16,19 +26,43 @@ import {
   LoaderCircle,
   MapPin,
   MessageSquareText,
+  NotebookTabs,
   Search,
+  ShieldCheck,
+  Sparkles,
   Tags,
   Type,
+  UserRoundCheck,
   UsersRound,
+  Wrench,
 } from "lucide-react";
 
-import { saveCommunityPostAction } from "@/app/community/actions";
+import {
+  saveCommunityPostAction,
+  updateCommunityPostImagesAction,
+} from "@/app/community/actions";
+import {
+  initialListingImageDrafts,
+  PostImageUploader,
+  type ListingImageDraft,
+} from "@/components/community/post-image-uploader";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   communityPath,
+  ATTACHED_BATHROOM_OPTIONS,
+  FURNISHING_OPTIONS,
   HOUSING_OPTIONS,
+  PARKING_OPTIONS,
+  PREFERRED_OCCUPANT_OPTIONS,
   validateCommunityPost,
 } from "@/lib/community";
+import {
+  listingImagePath,
+  LISTING_IMAGE_BUCKET,
+  supportsListingImages,
+  validateListingImageFile,
+} from "@/lib/listing-images";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import type {
   CommunityLocationOption,
@@ -45,6 +79,7 @@ type PostTypeConfig = {
   description: string;
   icon: typeof Search;
   amountLabel: string;
+  dateLabel: string;
   housingTypeLabel: string;
   housingFeatureLabel: string;
   descriptionPlaceholder: string;
@@ -57,6 +92,7 @@ const postTypeOptions: PostTypeConfig[] = [
     description: "Tell the community what kind of room you are looking for.",
     icon: Search,
     amountLabel: "Monthly budget",
+    dateLabel: "Move-in date",
     housingTypeLabel: "Preferred room type",
     housingFeatureLabel: "Furnishing preference",
     descriptionPlaceholder:
@@ -68,8 +104,9 @@ const postTypeOptions: PostTypeConfig[] = [
     description: "Share an available room with people searching nearby.",
     icon: BedDouble,
     amountLabel: "Monthly rent",
+    dateLabel: "Available from",
     housingTypeLabel: "Property type",
-    housingFeatureLabel: "Room offered",
+    housingFeatureLabel: "Room type / occupancy",
     descriptionPlaceholder:
       "Describe the room, home, current flatmates, nearby landmarks, and what makes it a good fit...",
   },
@@ -79,6 +116,7 @@ const postTypeOptions: PostTypeConfig[] = [
     description: "Find someone compatible to share your current home.",
     icon: UsersRound,
     amountLabel: "Flatmate’s monthly share",
+    dateLabel: "Move-in date",
     housingTypeLabel: "Home type",
     housingFeatureLabel: "Room offered",
     descriptionPlaceholder:
@@ -90,6 +128,7 @@ const postTypeOptions: PostTypeConfig[] = [
     description: "List a PG or co-living option for local members.",
     icon: Building2,
     amountLabel: "Monthly rent",
+    dateLabel: "Available from",
     housingTypeLabel: "Occupancy type",
     housingFeatureLabel: "Meals",
     descriptionPlaceholder:
@@ -101,6 +140,15 @@ const initialActionState: CommunityPostActionState = {
   success: false,
   message: "",
 };
+const listingDetailFields: CommunityPostFormField[] = [
+  "furnishingStatus",
+  "securityDeposit",
+  "maintenanceAmount",
+  "amenities",
+  "preferredOccupant",
+  "attachedBathroom",
+  "parkingType",
+];
 const inputClassName =
   "h-12 w-full rounded-xl border border-input bg-background px-4 text-[0.9375rem] font-medium text-foreground shadow-xs outline-none transition-[border-color,box-shadow] placeholder:font-normal placeholder:text-muted-foreground/75 hover:border-border focus:border-primary focus:ring-3 focus:ring-ring/15 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/10";
 const labelClassName = "text-sm font-semibold text-foreground";
@@ -125,6 +173,13 @@ function emptyValues(communityId: string): CommunityPostFormValues {
     genderPreference: "",
     housingType: "",
     housingFeature: "",
+    furnishingStatus: "",
+    securityDeposit: "",
+    maintenanceAmount: "",
+    amenities: "",
+    preferredOccupant: "",
+    attachedBathroom: "",
+    parkingType: "",
     description: "",
     tags: "",
   };
@@ -136,12 +191,14 @@ export function CreatePostFlow({
   initialLocality,
   initialPost,
   lockedCommunity,
+  authUserId,
 }: {
   locations: CommunityLocationOption[];
   initialCity: string;
   initialLocality: string;
   initialPost?: CommunityPostFormInitial;
   lockedCommunity?: CommunityLocationOption;
+  authUserId: string;
 }) {
   const requestedLocation =
     lockedCommunity ??
@@ -162,6 +219,30 @@ export function CreatePostFlow({
     Partial<Record<CommunityPostFormField, string>>
   >({});
   const [ignoreServerErrors, setIgnoreServerErrors] = useState(false);
+  const [images, setImages] = useState<ListingImageDraft[]>(() =>
+    initialListingImageDrafts(initialPost?.images ?? []),
+  );
+  const [homeDetailsOpen, setHomeDetailsOpen] = useState(() =>
+    Boolean(
+      initialPost &&
+        (initialPost.furnishingStatus ||
+          initialPost.securityDeposit ||
+          initialPost.maintenanceAmount ||
+          initialPost.amenities ||
+          initialPost.preferredOccupant ||
+          initialPost.attachedBathroom ||
+          initialPost.parkingType),
+    ),
+  );
+  const originalImagePaths = useRef(
+    (initialPost?.images ?? []).map((image) => image.path),
+  );
+  const latestImages = useRef(images);
+  const syncingPostId = useRef<string | null>(null);
+  const [imageSaveState, setImageSaveState] = useState<
+    "idle" | "saving" | "complete" | "error"
+  >("idle");
+  const [imageSaveError, setImageSaveError] = useState("");
   const saveAction = useMemo(
     () => saveCommunityPostAction.bind(null, initialPost?.id ?? null),
     [initialPost?.id],
@@ -187,6 +268,122 @@ export function CreatePostFlow({
   const returnPath =
     actionState.communityPath ??
     (currentLocation ? communityPath(currentLocation) : "/community");
+
+  useEffect(() => {
+    latestImages.current = images;
+  }, [images]);
+
+  useEffect(
+    () => () => {
+      latestImages.current.forEach((image) => {
+        if (image.file) URL.revokeObjectURL(image.previewUrl);
+      });
+    },
+    [],
+  );
+
+  const syncImages = async (postId: string) => {
+    setImageSaveState("saving");
+    setImageSaveError("");
+    const supabase = createSupabaseBrowserClient();
+    const desiredImages = supportsListingImages(postType) ? images : [];
+    const uploadedPaths: string[] = [];
+    const resolvedImages: ListingImageDraft[] = [];
+    let metadataSaved = false;
+
+    try {
+      for (const image of desiredImages) {
+        if (image.path) {
+          resolvedImages.push(image);
+          continue;
+        }
+
+        if (!image.file || validateListingImageFile(image.file)) {
+          throw new Error("One or more selected images are no longer valid.");
+        }
+
+        const path = listingImagePath(authUserId, postId, image.file);
+        const { error } = await supabase.storage
+          .from(LISTING_IMAGE_BUCKET)
+          .upload(path, image.file, {
+            cacheControl: "3600",
+            contentType: image.file.type,
+            upsert: false,
+          });
+
+        if (error) {
+          console.error("Listing image upload failed", error);
+          throw new Error(
+            "A photo could not be uploaded. Check its format and size, then try again.",
+          );
+        }
+
+        uploadedPaths.push(path);
+        resolvedImages.push({ ...image, path });
+      }
+
+      setImages(resolvedImages);
+      const finalPaths = resolvedImages.flatMap((image) =>
+        image.path ? [image.path] : [],
+      );
+      const result = await updateCommunityPostImagesAction(postId, finalPaths);
+      if (!result.success) throw new Error(result.message);
+      metadataSaved = true;
+
+      const removedPaths = originalImagePaths.current.filter(
+        (path) => !finalPaths.includes(path),
+      );
+      if (removedPaths.length) {
+        const { error } = await supabase.storage
+          .from(LISTING_IMAGE_BUCKET)
+          .remove(removedPaths);
+        if (error) {
+          console.error("Listing image removal failed", error);
+          throw new Error(
+            "Your post was saved, but an old photo could not be removed. Try again to finish cleanup.",
+          );
+        }
+      }
+
+      originalImagePaths.current = finalPaths;
+      resolvedImages.forEach((image) => {
+        if (image.file) URL.revokeObjectURL(image.previewUrl);
+      });
+      setImageSaveState("complete");
+    } catch (error) {
+      if (uploadedPaths.length && !metadataSaved) {
+        await supabase.storage.from(LISTING_IMAGE_BUCKET).remove(uploadedPaths);
+        const uploadedPathSet = new Set(uploadedPaths);
+        setImages((current) =>
+          current.map((image) =>
+            image.path && uploadedPathSet.has(image.path)
+              ? { ...image, path: undefined }
+              : image,
+          ),
+        );
+      }
+      setImageSaveError(
+        error instanceof Error
+          ? error.message
+          : "We could not save the listing photos. Please try again.",
+      );
+      setImageSaveState("error");
+    }
+  };
+
+  useEffect(() => {
+    if (
+      !actionState.success ||
+      !actionState.postId ||
+      syncingPostId.current === actionState.postId
+    ) {
+      return;
+    }
+    syncingPostId.current = actionState.postId;
+    void syncImages(actionState.postId);
+    // The submitted image snapshot should run exactly once per successful post save.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [actionState.postId, actionState.success]);
 
   const updateField = (field: CommunityPostFormField, value: string) => {
     setValues((current) => ({ ...current, [field]: value }));
@@ -218,6 +415,9 @@ export function CreatePostFlow({
     if (!parsed.success) {
       setClientErrors(parsed.errors);
       setIgnoreServerErrors(true);
+      if (listingDetailFields.some((field) => parsed.errors[field])) {
+        setHomeDetailsOpen(true);
+      }
       const firstInvalidField = Object.keys(parsed.errors)[0];
       requestAnimationFrame(() => document.getElementById(firstInvalidField)?.focus());
       return;
@@ -228,7 +428,7 @@ export function CreatePostFlow({
     startTransition(() => dispatch(values));
   };
 
-  if (actionState.success && config) {
+  if (actionState.success && config && imageSaveState === "complete") {
     return (
       <div className="surface-card mx-auto max-w-2xl px-6 py-12 text-center sm:px-10 sm:py-16">
         <span className="mx-auto flex size-16 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
@@ -246,6 +446,49 @@ export function CreatePostFlow({
         <Link href={returnPath} className={cn(buttonVariants({ size: "lg" }), "mt-8")}>
           View Locality Community
         </Link>
+      </div>
+    );
+  }
+
+  if (actionState.success && actionState.postId) {
+    return (
+      <div className="surface-card mx-auto max-w-2xl px-6 py-12 text-center sm:px-10 sm:py-16">
+        <span className="mx-auto flex size-16 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
+          {imageSaveState === "error" ? (
+            <AlertCircle aria-hidden="true" className="size-8 text-destructive" />
+          ) : (
+            <LoaderCircle aria-hidden="true" className="size-8 animate-spin" />
+          )}
+        </span>
+        <h1 className="mt-6 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
+          {imageSaveState === "error"
+            ? "The post is saved"
+            : "Finishing your listing"}
+        </h1>
+        <p className="mx-auto mt-4 max-w-lg text-base leading-7 text-muted-foreground">
+          {imageSaveState === "error"
+            ? imageSaveError
+            : "We’re securely attaching your selected photos. Keep this page open for a moment."}
+        </p>
+        {imageSaveState === "error" ? (
+          <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
+            <Button
+              type="button"
+              size="lg"
+              onClick={() => void syncImages(actionState.postId!)}
+            >
+              Try Photo Upload Again
+            </Button>
+            <Link
+              href={`/community/post/${encodeURIComponent(actionState.postId)}/edit`}
+              className={cn(
+                buttonVariants({ variant: "outline", size: "lg" }),
+              )}
+            >
+              Edit Later
+            </Link>
+          </div>
+        ) : null}
       </div>
     );
   }
@@ -328,11 +571,63 @@ export function CreatePostFlow({
               )}
               <TextField id="title" label="Post title" value={values.title} onChange={(value) => updateField("title", value)} icon={Type} placeholder="A clear summary of what you’re looking for or offering" error={errors.title} maxLength={140} wide />
               <TextField id="amount" label={config.amountLabel} value={values.amount} onChange={(value) => updateField("amount", value)} icon={IndianRupee} placeholder="e.g. 18000" error={errors.amount} type="number" />
-              <TextField id="moveInDate" label="Move-in date" value={values.moveInDate} onChange={(value) => updateField("moveInDate", value)} icon={CalendarDays} error={errors.moveInDate} type="date" />
+              <TextField id="moveInDate" label={config.dateLabel} value={values.moveInDate} onChange={(value) => updateField("moveInDate", value)} icon={CalendarDays} error={errors.moveInDate} type="date" />
               <SelectField id="genderPreference" label="Gender preference" value={values.genderPreference} onChange={(value) => updateField("genderPreference", value)} icon={UsersRound} options={["Any gender", "Women only", "Men only"].map((value) => ({ value, label: value }))} error={errors.genderPreference} placeholder="Choose preference" />
               <SelectField id="housingType" label={config.housingTypeLabel} value={values.housingType} onChange={(value) => updateField("housingType", value)} icon={Home} options={HOUSING_OPTIONS[postType].housingTypes.map((value) => ({ value, label: value }))} error={errors.housingType} placeholder="Choose option" />
               <SelectField id="housingFeature" label={config.housingFeatureLabel} value={values.housingFeature} onChange={(value) => updateField("housingFeature", value)} icon={BedDouble} options={HOUSING_OPTIONS[postType].housingFeatures.map((value) => ({ value, label: value }))} error={errors.housingFeature} placeholder="Choose option" wide />
+
+              {supportsListingImages(postType) ? (
+                <section className="rounded-2xl border border-border/80 bg-muted/25 p-4 sm:col-span-2 sm:p-5">
+                  <button
+                    type="button"
+                    aria-expanded={homeDetailsOpen}
+                    aria-controls="listing-home-details"
+                    onClick={() => setHomeDetailsOpen((open) => !open)}
+                    className="flex w-full items-center gap-3 rounded-xl text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/25"
+                  >
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-secondary-foreground">
+                      <NotebookTabs aria-hidden="true" className="size-5" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-base font-semibold">Home details</span>
+                      <span className="mt-1 block text-sm leading-6 text-muted-foreground">
+                        Add optional details that help people understand the space.
+                      </span>
+                    </span>
+                    <span className="hidden rounded-full bg-background px-2.5 py-1 text-xs font-medium text-muted-foreground sm:inline-flex">
+                      Optional
+                    </span>
+                    <ChevronDown
+                      aria-hidden="true"
+                      className={cn(
+                        "size-5 shrink-0 text-muted-foreground transition-transform",
+                        homeDetailsOpen && "rotate-180",
+                      )}
+                    />
+                  </button>
+
+                  {homeDetailsOpen ? (
+                  <div id="listing-home-details" className="mt-5 grid gap-x-4 gap-y-5 border-t border-border/70 pt-5 sm:grid-cols-2">
+                    <SelectField id="furnishingStatus" label="Furnishing" optional value={values.furnishingStatus} onChange={(value) => updateField("furnishingStatus", value)} icon={Armchair} options={FURNISHING_OPTIONS.map((value) => ({ value, label: value }))} error={errors.furnishingStatus} placeholder="Not specified" />
+                    <SelectField id="preferredOccupant" label={postType === "PG Available" ? "Preferred tenant" : "Preferred tenant / flatmate"} optional value={values.preferredOccupant} onChange={(value) => updateField("preferredOccupant", value)} icon={UserRoundCheck} options={PREFERRED_OCCUPANT_OPTIONS.map((value) => ({ value, label: value }))} error={errors.preferredOccupant} placeholder="No preference" />
+                    <TextField id="securityDeposit" label="Security deposit" optional value={values.securityDeposit} onChange={(value) => updateField("securityDeposit", value)} icon={ShieldCheck} placeholder="e.g. 36000" error={errors.securityDeposit} type="number" min={0} />
+                    <TextField id="maintenanceAmount" label="Monthly maintenance" optional value={values.maintenanceAmount} onChange={(value) => updateField("maintenanceAmount", value)} icon={Wrench} placeholder="e.g. 2500" error={errors.maintenanceAmount} type="number" min={0} />
+                    <SelectField id="attachedBathroom" label="Attached bathroom" optional value={values.attachedBathroom} onChange={(value) => updateField("attachedBathroom", value)} icon={Bath} options={ATTACHED_BATHROOM_OPTIONS.map((value) => ({ value, label: value }))} error={errors.attachedBathroom} placeholder="Not specified" />
+                    <SelectField id="parkingType" label="Parking" optional value={values.parkingType} onChange={(value) => updateField("parkingType", value)} icon={Car} options={PARKING_OPTIONS.map((value) => ({ value, label: value }))} error={errors.parkingType} placeholder="Not specified" />
+                    <TextField id="amenities" label="Amenities" optional value={values.amenities} onChange={(value) => updateField("amenities", value)} icon={Sparkles} placeholder="Wi-Fi, power backup, washing machine" error={errors.amenities} help="Separate up to 8 amenities with commas." wide />
+                  </div>
+                  ) : null}
+                </section>
+              ) : null}
               <TextField id="tags" label="Helpful tags" optional value={values.tags} onChange={(value) => updateField("tags", value)} icon={Tags} placeholder="e.g. No brokerage, Metro nearby, Pet friendly" error={errors.tags} help="Separate up to 5 tags with commas. Housing details are added automatically." wide />
+
+              {supportsListingImages(postType) ? (
+                <PostImageUploader
+                  images={images}
+                  onChange={setImages}
+                  disabled={isPending}
+                />
+              ) : null}
 
               <div className="space-y-2 sm:col-span-2">
                 <label htmlFor="description" className={labelClassName}>Description <span className="text-primary">*</span></label>
@@ -369,23 +664,23 @@ function FormAlert({ title, message }: { title: string; message: string }) {
 
 type FieldIcon = typeof MapPin;
 
-function TextField({ id, label, optional, value, onChange, icon: Icon, placeholder, error, help, maxLength, type = "text", wide }: { id: CommunityPostFormField; label: string; optional?: boolean; value: string; onChange: (value: string) => void; icon: FieldIcon; placeholder?: string; error?: string; help?: string; maxLength?: number; type?: string; wide?: boolean }) {
+function TextField({ id, label, optional, value, onChange, icon: Icon, placeholder, error, help, maxLength, min, type = "text", wide }: { id: CommunityPostFormField; label: string; optional?: boolean; value: string; onChange: (value: string) => void; icon: FieldIcon; placeholder?: string; error?: string; help?: string; maxLength?: number; min?: number; type?: string; wide?: boolean }) {
   const errorId = `${id}-error`;
   return (
     <div className={cn("space-y-2", wide && "sm:col-span-2")}>
       <label htmlFor={id} className={labelClassName}>{label} {optional ? <span className="font-normal text-muted-foreground">(optional)</span> : <span className="text-primary">*</span>}</label>
-      <div className="relative"><Icon aria-hidden="true" className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><input id={id} type={type} min={type === "number" ? 1 : undefined} inputMode={type === "number" ? "numeric" : undefined} maxLength={maxLength} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} aria-invalid={Boolean(error)} aria-describedby={error ? errorId : help ? `${id}-help` : undefined} className={cn(inputClassName, "pl-10")} /></div>
+      <div className="relative"><Icon aria-hidden="true" className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><input id={id} type={type} min={min ?? (type === "number" ? 1 : undefined)} inputMode={type === "number" ? "numeric" : undefined} maxLength={maxLength} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} aria-invalid={Boolean(error)} aria-describedby={error ? errorId : help ? `${id}-help` : undefined} className={cn(inputClassName, "pl-10")} /></div>
       {help ? <p id={`${id}-help`} className="text-xs text-muted-foreground">{help}</p> : null}
       <FieldError id={errorId} message={error} />
     </div>
   );
 }
 
-function SelectField({ id, label, value, onChange, icon: Icon, options, error, placeholder, wide }: { id: string; label: string; value: string; onChange: (value: string) => void; icon: FieldIcon; options: { value: string; label: string }[]; error?: string; placeholder?: string; wide?: boolean }) {
+function SelectField({ id, label, optional, value, onChange, icon: Icon, options, error, placeholder, wide }: { id: string; label: string; optional?: boolean; value: string; onChange: (value: string) => void; icon: FieldIcon; options: { value: string; label: string }[]; error?: string; placeholder?: string; wide?: boolean }) {
   const errorId = `${id}-error`;
   return (
     <div className={cn("space-y-2", wide && "sm:col-span-2")}>
-      <label htmlFor={id} className={labelClassName}>{label} <span className="text-primary">*</span></label>
+      <label htmlFor={id} className={labelClassName}>{label} {optional ? <span className="font-normal text-muted-foreground">(optional)</span> : <span className="text-primary">*</span>}</label>
       <div className="relative"><Icon aria-hidden="true" className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><select id={id} value={value} onChange={(event) => onChange(event.target.value)} aria-invalid={Boolean(error)} aria-describedby={error ? errorId : undefined} className={cn(inputClassName, "appearance-none pl-10 pr-9")}>{placeholder ? <option value="">{placeholder}</option> : null}{options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select><ChevronDown aria-hidden="true" className="pointer-events-none absolute right-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /></div>
       <FieldError id={errorId} message={error} />
     </div>

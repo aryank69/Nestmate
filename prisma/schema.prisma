@@ -53,6 +53,20 @@ enum FurnishingStatus {
   UNFURNISHED
 }
 
+enum PreferredOccupant {
+  ANY
+  WORKING_PROFESSIONAL
+  STUDENT
+  FAMILY
+}
+
+enum ParkingType {
+  NONE
+  TWO_WHEELER
+  CAR
+  BOTH
+}
+
 enum DietPreference {
   VEGETARIAN
   NON_VEGETARIAN
@@ -92,26 +106,63 @@ enum OccupationStatus {
   OTHER
 }
 
+enum ReportTargetType {
+  USER
+  POST
+  DIRECT_MESSAGE
+  COMMUNITY_MESSAGE
+}
+
+enum ReportReason {
+  SPAM
+  SCAM
+  HARASSMENT
+  INAPPROPRIATE_CONTENT
+  IMPERSONATION
+  SAFETY_CONCERN
+  OTHER
+}
+
+enum NotificationType {
+  PRIVATE_MESSAGE
+  COMMUNITY_MENTION
+  COMMUNITY_REPLY
+  POST_ACTIVITY
+}
+
+enum SavedSearchKind {
+  COMMUNITY_POSTS
+  PEOPLE
+}
+
 model User {
-  id               String            @id @default(cuid())
-  authUserId       String            @unique @db.Uuid
-  name             String
-  email            String?           @unique
-  dateOfBirth      DateTime?         @db.Date
-  profession       String?
-  companyOrCollege String?
-  bio              String?           @db.VarChar(500)
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  memberships      CommunityMember[]
-  posts            Post[]
-  preferences      UserPreferences?
-  conversationsAsParticipantOne Conversation[] @relation("ConversationParticipantOne")
-  conversationsAsParticipantTwo Conversation[] @relation("ConversationParticipantTwo")
-  sentMessages     Message[]
-  sentCommunityMessages CommunityMessage[]
+  id                            String             @id @default(cuid())
+  authUserId                    String             @unique @db.Uuid
+  name                          String
+  email                         String?            @unique
+  dateOfBirth                   DateTime?          @db.Date
+  profession                    String?
+  companyOrCollege              String?
+  bio                           String?            @db.VarChar(500)
+  createdAt                     DateTime           @default(now())
+  updatedAt                     DateTime           @updatedAt
+  memberships                   CommunityMember[]
+  posts                         Post[]
+  preferences                   UserPreferences?
+  conversationsAsParticipantOne Conversation[]     @relation("ConversationParticipantOne")
+  conversationsAsParticipantTwo Conversation[]     @relation("ConversationParticipantTwo")
+  sentMessages                  Message[]
+  sentCommunityMessages         CommunityMessage[]
+  blocksCreated                 UserBlock[]        @relation("UserBlockBlocker")
+  blocksReceived                UserBlock[]        @relation("UserBlockBlocked")
+  reportsSubmitted              Report[]           @relation("ReportReporter")
+  notificationsReceived         Notification[]     @relation("NotificationRecipient")
+  notificationsCreated          Notification[]     @relation("NotificationActor")
+  savedPosts                    SavedPost[]
+  savedSearches                 SavedSearch[]
 
   @@index([name])
+  @@index([createdAt(sort: Desc)])
 }
 
 model Conversation {
@@ -175,15 +226,15 @@ model Locality {
 }
 
 model Community {
-  id          String            @id @default(cuid())
+  id          String             @id @default(cuid())
   name        String
-  slug        String            @unique
-  description String?           @db.VarChar(500)
-  isActive    Boolean           @default(true)
-  localityId  String            @unique
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-  locality    Locality          @relation(fields: [localityId], references: [id], onDelete: Cascade)
+  slug        String             @unique
+  description String?            @db.VarChar(500)
+  isActive    Boolean            @default(true)
+  localityId  String             @unique
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  locality    Locality           @relation(fields: [localityId], references: [id], onDelete: Cascade)
   members     CommunityMember[]
   posts       Post[]
   messages    CommunityMessage[]
@@ -192,64 +243,104 @@ model Community {
 }
 
 model CommunityMember {
-  userId      String
-  communityId String
-  role        CommunityRole @default(MEMBER)
-  joinedAt    DateTime      @default(now())
-  lastChatReadAt DateTime?   @db.Timestamptz(3)
-  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  community   Community     @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  userId         String
+  communityId    String
+  role           CommunityRole @default(MEMBER)
+  joinedAt       DateTime      @default(now())
+  lastChatReadAt DateTime?     @db.Timestamptz(3)
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  community      Community     @relation(fields: [communityId], references: [id], onDelete: Cascade)
 
   @@id([userId, communityId])
   @@index([communityId, joinedAt])
 }
 
 model CommunityMessage {
-  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id          String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   communityId String
   senderId    String
-  body        String    @db.VarChar(2000)
-  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
-  community   Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
-  sender      User      @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  replyToId   String?            @db.Uuid
+  body        String             @db.VarChar(2000)
+  createdAt   DateTime           @default(now()) @db.Timestamptz(3)
+  community   Community          @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  sender      User               @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  replyTo     CommunityMessage?  @relation("CommunityMessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies     CommunityMessage[] @relation("CommunityMessageReplies")
 
   @@index([communityId, createdAt, id])
   @@index([senderId])
+  @@index([replyToId])
 }
 
 model Post {
-  id               String            @id @default(cuid())
-  type             PostType
-  status           PostStatus        @default(ACTIVE)
-  title            String            @db.VarChar(140)
-  description      String            @db.VarChar(2000)
-  monthlyAmountMin Int?
-  monthlyAmountMax Int?
-  securityDeposit  Int?
-  currency         String            @default("INR") @db.Char(3)
-  moveInDate       DateTime?         @db.Date
-  genderPreference GenderPreference  @default(ANY)
-  propertyType     PropertyType?
-  roomType         RoomType?
-  furnishingStatus FurnishingStatus?
-  bedrooms         Int?
-  bathrooms        Int?
-  currentOccupants Int?
-  availableSpots   Int?
-  mealsIncluded    Boolean?
-  amenities        String[]          @default([])
-  tags             String[]          @default([])
-  authorId         String
-  communityId      String
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  publishedAt      DateTime?
-  author           User              @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  community        Community         @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  id                String             @id @default(cuid())
+  type              PostType
+  status            PostStatus         @default(ACTIVE)
+  title             String             @db.VarChar(140)
+  description       String             @db.VarChar(2000)
+  monthlyAmountMin  Int?
+  monthlyAmountMax  Int?
+  securityDeposit   Int?
+  maintenanceAmount Int?
+  currency          String             @default("INR") @db.Char(3)
+  moveInDate        DateTime?          @db.Date
+  genderPreference  GenderPreference   @default(ANY)
+  propertyType      PropertyType?
+  roomType          RoomType?
+  furnishingStatus  FurnishingStatus?
+  preferredOccupant PreferredOccupant?
+  attachedBathroom  Boolean?
+  parkingType       ParkingType?
+  bedrooms          Int?
+  bathrooms         Int?
+  currentOccupants  Int?
+  availableSpots    Int?
+  mealsIncluded     Boolean?
+  amenities         String[]           @default([])
+  tags              String[]           @default([])
+  imagePaths        String[]           @default([])
+  authorId          String
+  communityId       String
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  publishedAt       DateTime?
+  author            User               @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  community         Community          @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  savedBy           SavedPost[]
 
   @@index([authorId, createdAt])
   @@index([communityId, type, status, createdAt])
+  @@index([communityId, status, publishedAt(sort: Desc), id])
+  @@index([communityId, status, genderPreference])
+  @@index([communityId, status, monthlyAmountMin])
+  @@index([communityId, status, monthlyAmountMax])
+  @@index([communityId, status, moveInDate])
   @@index([moveInDate])
+}
+
+model SavedPost {
+  userId    String
+  postId    String
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@id([userId, postId])
+  @@index([postId])
+}
+
+model SavedSearch {
+  id        String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String
+  name      String          @db.VarChar(80)
+  kind      SavedSearchKind
+  path      String          @db.VarChar(500)
+  filters   Json
+  createdAt DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime        @updatedAt @db.Timestamptz(3)
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
 }
 
 model UserPreferences {
@@ -269,6 +360,16 @@ model UserPreferences {
   updatedAt           DateTime                @updatedAt
   user                User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
   preferredLocalities UserPreferredLocality[]
+
+  @@index([budgetMin, budgetMax])
+  @@index([preferredMoveInDate])
+  @@index([diet])
+  @@index([smoking])
+  @@index([drinking])
+  @@index([sleepSchedule])
+  @@index([cleanliness])
+  @@index([pets])
+  @@index([occupationStatus])
 }
 
 model UserPreferredLocality {
@@ -282,4 +383,51 @@ model UserPreferredLocality {
   @@id([preferencesId, localityId])
   @@index([localityId])
   @@index([preferencesId, priority])
+}
+
+model UserBlock {
+  blockerId String
+  blockedId String
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  blocker   User     @relation("UserBlockBlocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked   User     @relation("UserBlockBlocked", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@id([blockerId, blockedId])
+  @@index([blockedId])
+}
+
+model Report {
+  id             String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reporterId     String
+  reportedUserId String
+  targetType     ReportTargetType
+  targetId       String           @db.VarChar(128)
+  reason         ReportReason
+  details        String?          @db.VarChar(500)
+  createdAt      DateTime         @default(now()) @db.Timestamptz(3)
+  reporter       User             @relation("ReportReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@unique([reporterId, targetType, targetId])
+  @@index([reporterId, createdAt(sort: Desc)])
+  @@index([reportedUserId, createdAt(sort: Desc)])
+  @@index([targetType, targetId])
+}
+
+model Notification {
+  id          String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  recipientId String
+  actorId     String?
+  type        NotificationType
+  title       String           @db.VarChar(140)
+  body        String?          @db.VarChar(300)
+  href        String           @db.VarChar(500)
+  resourceId  String           @db.VarChar(128)
+  readAt      DateTime?        @db.Timestamptz(3)
+  createdAt   DateTime         @default(now()) @db.Timestamptz(3)
+  recipient   User             @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  actor       User?            @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@unique([recipientId, type, resourceId, actorId])
+  @@index([recipientId, readAt, createdAt(sort: Desc)])
+  @@index([actorId])
 }

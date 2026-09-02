@@ -9,23 +9,31 @@ import {
   useState,
 } from "react";
 import {
+  ArrowDown,
   CircleAlert,
   LoaderCircle,
   MessageCircle,
+  RefreshCw,
+  Reply,
   Send,
   UsersRound,
   Wifi,
+  X,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { SafetyActions } from "@/components/trust-safety/safety-actions";
 import {
   cleanCommunityMessageBody,
+  formatCommunityMessageDate,
   formatCommunityMessageTime,
+  isCommunityChatNearBottom,
   MAX_COMMUNITY_MESSAGE_LENGTH,
   mergeCommunityChatMessage,
   nextCommunityUnreadCount,
   normalizeCommunityChatMessage,
   normalizeCommunityChatMessages,
+  shouldShowCommunityDateSeparator,
 } from "@/lib/community-chat";
 import { chatInitials } from "@/lib/chat";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -57,14 +65,20 @@ export function CommunityChat({
   const [supabase] = useState(() => createSupabaseBrowserClient());
   const [messages, setMessages] = useState<CommunityChatMessage[]>([]);
   const [draft, setDraft] = useState("");
+  const [replyingTo, setReplyingTo] =
+    useState<CommunityChatMessage | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
+  const [loadError, setLoadError] = useState("");
+  const [sendError, setSendError] = useState("");
+  const [syncError, setSyncError] = useState("");
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const [newMessageCount, setNewMessageCount] = useState(0);
   const [realtimeState, setRealtimeState] =
     useState<RealtimeState>("connecting");
   const isActiveRef = useRef(isActive);
   const unreadCountRef = useRef(unreadCount);
-  const messageEndRef = useRef<HTMLDivElement>(null);
+  const messageViewportRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     isActiveRef.current = isActive;
@@ -73,6 +87,28 @@ export function CommunityChat({
   useEffect(() => {
     unreadCountRef.current = unreadCount;
   }, [unreadCount]);
+
+  const isNearLatestMessage = useCallback(() => {
+    const viewport = messageViewportRef.current;
+    if (!viewport) return true;
+
+    return isCommunityChatNearBottom({
+      scrollHeight: viewport.scrollHeight,
+      scrollTop: viewport.scrollTop,
+      clientHeight: viewport.clientHeight,
+    });
+  }, []);
+
+  const scrollToLatestMessage = useCallback(
+    (behavior: ScrollBehavior = "smooth") => {
+      const viewport = messageViewportRef.current;
+      if (!viewport) return;
+
+      viewport.scrollTo({ top: viewport.scrollHeight, behavior });
+      setNewMessageCount(0);
+    },
+    [],
+  );
 
   const markRead = useCallback(async () => {
     const { error } = await supabase.rpc("mark_community_chat_read", {
@@ -92,7 +128,12 @@ export function CommunityChat({
         },
       );
 
-      if (error || !data?.length) return null;
+      if (error) {
+        console.error("[community-chat:hydrate] Unable to load message", error);
+        return null;
+      }
+
+      if (!data?.length) return null;
       return normalizeCommunityChatMessage(
         data[0] as CommunityChatMessageRow,
       );
@@ -104,6 +145,8 @@ export function CommunityChat({
     let isCurrent = true;
 
     async function loadMessages() {
+      setIsLoading(true);
+      setLoadError("");
       const { data, error } = await supabase.rpc(
         "get_community_chat_messages",
         {
@@ -114,7 +157,10 @@ export function CommunityChat({
 
       if (!isCurrent) return;
       if (error) {
-        setErrorMessage("We could not load this locality chat.");
+        console.error("[community-chat:load] Unable to load messages", error);
+        setLoadError(
+          "We could not load this locality chat. Check your connection and try again.",
+        );
       } else {
         setMessages(
           normalizeCommunityChatMessages(
@@ -126,6 +172,14 @@ export function CommunityChat({
     }
 
     void loadMessages();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [communityId, loadAttempt, supabase]);
+
+  useEffect(() => {
+    let isCurrent = true;
 
     const channel = supabase
       .channel(`locality-chat-${communityId}`)
@@ -140,7 +194,16 @@ export function CommunityChat({
         (payload) => {
           const incoming = payload.new as CommunityChatRealtimeRow;
           void hydrateMessage(incoming.id).then((message) => {
-            if (!message || !isCurrent) return;
+            if (!isCurrent) return;
+            if (!message) {
+              setSyncError(
+                "A new message could not be displayed. Refresh the chat to catch up.",
+              );
+              return;
+            }
+
+            const shouldFollowLatest =
+              isActiveRef.current && isNearLatestMessage();
             setMessages((current) =>
               mergeCommunityChatMessage(current, message),
             );
@@ -153,20 +216,40 @@ export function CommunityChat({
                 senderId: incoming.senderId,
               });
               onUnreadChange(nextUnread);
-              if (isActiveRef.current) void markRead();
+
+              if (isActiveRef.current && shouldFollowLatest) {
+                void markRead();
+              } else if (isActiveRef.current) {
+                setNewMessageCount((current) => current + 1);
+              }
+            }
+
+            if (shouldFollowLatest) {
+              requestAnimationFrame(() => scrollToLatestMessage());
             }
           });
         },
       )
-      .subscribe((status) => {
+      .subscribe((status, error) => {
+        if (!isCurrent) return;
+
         if (status === "SUBSCRIBED") {
           setRealtimeState("live");
-        } else if (
-          status === "CHANNEL_ERROR" ||
-          status === "TIMED_OUT" ||
-          status === "CLOSED"
-        ) {
+          setSyncError("");
+        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          console.error("[community-chat:realtime] Subscription interrupted", {
+            status,
+            error,
+          });
           setRealtimeState("offline");
+          setSyncError(
+            "Live updates are paused. Messages already loaded are still available while we reconnect.",
+          );
+        } else if (status === "CLOSED") {
+          setRealtimeState("offline");
+          setSyncError(
+            "Live updates are paused. Messages already loaded are still available while we reconnect.",
+          );
         }
       });
 
@@ -178,23 +261,34 @@ export function CommunityChat({
     communityId,
     currentUser.id,
     hydrateMessage,
+    isNearLatestMessage,
     markRead,
     onUnreadChange,
+    scrollToLatestMessage,
     supabase,
   ]);
 
   useEffect(() => {
     if (isActive) {
       void markRead();
-      messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [isActive, markRead]);
 
-  useEffect(() => {
-    if (isActive) {
-      messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      if (!isLoading && !loadError) {
+        requestAnimationFrame(() => scrollToLatestMessage("auto"));
+      }
     }
-  }, [isActive, messages]);
+  }, [isActive, isLoading, loadError, markRead, scrollToLatestMessage]);
+
+  const handleMessageScroll = () => {
+    if (newMessageCount > 0 && isNearLatestMessage()) {
+      setNewMessageCount(0);
+      void markRead();
+    }
+  };
+
+  const jumpToLatestMessage = () => {
+    scrollToLatestMessage();
+    void markRead();
+  };
 
   const sendMessage = async (event?: FormEvent<HTMLFormElement>) => {
     event?.preventDefault();
@@ -202,19 +296,23 @@ export function CommunityChat({
     if (!body || isSending) return;
 
     setIsSending(true);
-    setErrorMessage("");
+    setSendError("");
     const { data, error } = await supabase
       .from("CommunityMessage")
       .insert({
         communityId,
         senderId: currentUser.id,
+        replyToId: replyingTo?.id ?? null,
         body,
       })
       .select("id")
       .single();
 
     if (error || !data) {
-      setErrorMessage("Your message was not sent. Please try again.");
+      console.error("[community-chat:send] Unable to send message", error);
+      setSendError(
+        "Your message was not sent. Check your connection and try again.",
+      );
       setIsSending(false);
       return;
     }
@@ -222,8 +320,14 @@ export function CommunityChat({
     const message = await hydrateMessage(data.id as string);
     if (message) {
       setMessages((current) => mergeCommunityChatMessage(current, message));
+      requestAnimationFrame(() => scrollToLatestMessage());
+    } else {
+      setSendError(
+        "Your message was sent, but it could not be displayed yet. Refresh the chat to catch up.",
+      );
     }
     setDraft("");
+    setReplyingTo(null);
     setIsSending(false);
     void markRead();
   };
@@ -241,7 +345,7 @@ export function CommunityChat({
       aria-label={`${locality} group chat`}
       className="content-shell py-8 sm:py-10"
     >
-      <div className="surface-card mx-auto flex min-h-[36rem] max-w-3xl flex-col overflow-hidden p-0 sm:min-h-[42rem]">
+      <div className="surface-card mx-auto flex h-[70svh] min-h-[32rem] max-h-[42rem] max-w-3xl flex-col overflow-hidden p-0">
         <header className="flex flex-wrap items-center gap-3 border-b border-border/70 px-4 py-4 sm:px-5">
           <span className="flex size-10 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
             <UsersRound aria-hidden="true" className="size-5" />
@@ -264,93 +368,259 @@ export function CommunityChat({
               )}
             />
             <Wifi aria-hidden="true" className="size-3.5" />
-            {realtimeState === "live" ? "Live" : "Connecting"}
+            {realtimeState === "live"
+              ? "Live"
+              : realtimeState === "connecting"
+                ? "Connecting"
+                : "Updates paused"}
           </div>
         </header>
 
-        {errorMessage ? (
+        {syncError ? (
           <div
             role="alert"
             className="m-4 mb-0 flex items-center gap-2 rounded-xl border border-destructive/25 bg-destructive/8 px-4 py-3 text-sm font-medium text-destructive"
           >
             <CircleAlert aria-hidden="true" className="size-4 shrink-0" />
-            {errorMessage}
+            {syncError}
           </div>
         ) : null}
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-5">
-          {isLoading ? (
-            <div className="flex h-full min-h-72 items-center justify-center text-sm text-muted-foreground">
-              <LoaderCircle aria-hidden="true" className="mr-2 size-4 animate-spin" />
-              Loading messages...
-            </div>
-          ) : messages.length ? (
-            <div className="space-y-4">
-              {messages.map((message) => {
-                const isOwn = message.sender.id === currentUser.id;
-                return (
-                  <article
-                    key={message.id}
+        <div className="relative min-h-0 flex-1">
+          <div
+            ref={messageViewportRef}
+            onScroll={handleMessageScroll}
+            aria-busy={isLoading}
+            className="h-full overflow-y-auto px-4 py-5 sm:px-5"
+          >
+            {isLoading ? (
+              <div
+                role="status"
+                aria-live="polite"
+                className="min-h-72 space-y-5 pt-3"
+              >
+                <p className="text-center text-xs font-semibold text-muted-foreground">
+                  Loading messages...
+                </p>
+                {[false, true, false].map((isOwn, index) => (
+                  <div
+                    key={index}
                     className={cn(
-                      "flex items-end gap-2.5",
+                      "flex animate-pulse items-end gap-2.5",
                       isOwn && "flex-row-reverse",
                     )}
                   >
-                    <span
-                      aria-hidden="true"
-                      className="flex size-8 shrink-0 items-center justify-center rounded-full bg-secondary text-[0.6875rem] font-bold text-secondary-foreground"
+                    <span className="size-8 shrink-0 rounded-full bg-muted" />
+                    <div
+                      className={cn(
+                        "w-[min(18rem,72%)] space-y-2",
+                        isOwn && "items-end",
+                      )}
                     >
-                      {chatInitials(message.sender.name)}
-                    </span>
-                    <div className={cn("max-w-[82%]", isOwn && "text-right")}>
-                      <div
-                        className={cn(
-                          "mb-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5",
-                          isOwn && "justify-end",
-                        )}
-                      >
-                        <span className="text-xs font-semibold">
-                          {isOwn ? "You" : message.sender.name}
-                        </span>
-                        {!isOwn && message.sender.profession ? (
-                          <span className="text-[0.6875rem] text-muted-foreground">
-                            {message.sender.profession}
-                          </span>
-                        ) : null}
-                      </div>
-                      <div
-                        className={cn(
-                          "rounded-2xl px-4 py-2.5 text-left text-sm leading-6",
-                          isOwn
-                            ? "rounded-br-md bg-primary text-primary-foreground"
-                            : "rounded-bl-md border border-border/70 bg-muted/55 text-foreground",
-                        )}
-                      >
-                        <p className="whitespace-pre-wrap break-words">{message.body}</p>
-                      </div>
-                      <time
-                        dateTime={message.createdAt}
-                        className="mt-1 block text-[0.6875rem] text-muted-foreground"
-                      >
-                        {formatCommunityMessageTime(message.createdAt)}
-                      </time>
+                      <span className="block h-2.5 w-20 rounded-full bg-muted" />
+                      <span className="block h-16 rounded-2xl bg-muted/80" />
                     </div>
-                  </article>
-                );
-              })}
-              <div ref={messageEndRef} />
-            </div>
-          ) : (
-            <div className="flex min-h-72 flex-col items-center justify-center px-6 text-center">
-              <span className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                <MessageCircle aria-hidden="true" className="size-5" />
-              </span>
-              <h3 className="mt-4 text-sm font-semibold">Start the conversation</h3>
-              <p className="mt-2 max-w-sm text-xs leading-5 text-muted-foreground">
-                Ask a locality question or share a useful housing update with community members.
-              </p>
-            </div>
-          )}
+                  </div>
+                ))}
+              </div>
+            ) : loadError ? (
+              <div
+                role="alert"
+                className="flex min-h-72 flex-col items-center justify-center px-6 text-center"
+              >
+                <span className="flex size-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+                  <CircleAlert aria-hidden="true" className="size-5" />
+                </span>
+                <h3 className="mt-4 text-sm font-semibold">
+                  Messages are unavailable
+                </h3>
+                <p className="mt-2 max-w-sm text-xs leading-5 text-muted-foreground">
+                  {loadError}
+                </p>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="mt-5"
+                  onClick={() => setLoadAttempt((current) => current + 1)}
+                >
+                  <RefreshCw aria-hidden="true" className="size-4" />
+                  Try again
+                </Button>
+              </div>
+            ) : messages.length ? (
+              <div className="space-y-4">
+                {messages.map((message, index) => {
+                  const isOwn = message.sender.id === currentUser.id;
+                  const dateLabel = shouldShowCommunityDateSeparator(
+                    message.createdAt,
+                    messages[index - 1]?.createdAt,
+                  )
+                    ? formatCommunityMessageDate(message.createdAt)
+                    : null;
+
+                  return (
+                    <div key={message.id} className="space-y-4">
+                      {dateLabel ? (
+                        <div
+                          role="separator"
+                          aria-label={dateLabel}
+                          className="flex items-center gap-3 py-1"
+                        >
+                          <span className="h-px flex-1 bg-border/75" />
+                          <span className="rounded-full border border-border/70 bg-background px-3 py-1 text-[0.6875rem] font-semibold text-muted-foreground shadow-xs">
+                            {dateLabel}
+                          </span>
+                          <span className="h-px flex-1 bg-border/75" />
+                        </div>
+                      ) : null}
+
+                      <article
+                        className={cn(
+                          "flex items-end gap-2.5",
+                          isOwn && "flex-row-reverse",
+                        )}
+                      >
+                        <span
+                          aria-hidden="true"
+                          className="flex size-8 shrink-0 items-center justify-center rounded-full bg-secondary text-[0.6875rem] font-bold text-secondary-foreground"
+                        >
+                          {chatInitials(message.sender.name)}
+                        </span>
+                        <div
+                          className={cn(
+                            "max-w-[82%]",
+                            isOwn && "text-right",
+                          )}
+                        >
+                          <div
+                            className={cn(
+                              "mb-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5",
+                              isOwn && "justify-end",
+                            )}
+                          >
+                            <span className="text-xs font-semibold">
+                              {isOwn ? "You" : message.sender.name}
+                            </span>
+                            {!isOwn && message.sender.profession ? (
+                              <span className="text-[0.6875rem] text-muted-foreground">
+                                {message.sender.profession}
+                              </span>
+                            ) : null}
+                          </div>
+                          <div
+                            className={cn(
+                              "rounded-2xl px-4 py-2.5 text-left text-sm leading-6",
+                              isOwn
+                                ? "rounded-br-md bg-primary text-primary-foreground"
+                                : "rounded-bl-md border border-border/70 bg-muted/55 text-foreground",
+                            )}
+                          >
+                            {message.replyTo ? (
+                              <div
+                                className={cn(
+                                  "mb-2 rounded-xl border-l-2 px-3 py-2 text-xs",
+                                  isOwn
+                                    ? "border-primary-foreground/50 bg-primary-foreground/10 text-primary-foreground/80"
+                                    : "border-primary/50 bg-background/70 text-muted-foreground",
+                                )}
+                              >
+                                <p className="font-semibold">
+                                  {message.replyTo.senderName}
+                                </p>
+                                <p className="mt-0.5 line-clamp-2">
+                                  {message.replyTo.body}
+                                </p>
+                              </div>
+                            ) : null}
+                            <p className="whitespace-pre-wrap break-words">
+                              {message.body}
+                            </p>
+                          </div>
+                          <time
+                            dateTime={message.createdAt}
+                            className="mt-1 inline-block text-[0.6875rem] text-muted-foreground"
+                          >
+                            {formatCommunityMessageTime(message.createdAt)}
+                          </time>
+                          {!isOwn ? (
+                            <span className="ml-1 inline-flex items-center align-middle">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon-sm"
+                                aria-label={`Reply to ${message.sender.name}`}
+                                onClick={() => {
+                                  setReplyingTo(message);
+                                  requestAnimationFrame(() =>
+                                    document
+                                      .getElementById("community-message")
+                                      ?.focus(),
+                                  );
+                                }}
+                              >
+                                <Reply aria-hidden="true" className="size-3.5" />
+                              </Button>
+                              <SafetyActions
+                                target={{
+                                  type: "COMMUNITY_MESSAGE",
+                                  id: message.id,
+                                  label: "message",
+                                }}
+                                user={{
+                                  id: message.sender.id,
+                                  name: message.sender.name,
+                                }}
+                                onBlocked={(blockedUserId) => {
+                                  setMessages((current) =>
+                                    current.filter(
+                                      (item) =>
+                                        item.sender.id !== blockedUserId,
+                                    ),
+                                  );
+                                  if (
+                                    replyingTo?.sender.id === blockedUserId
+                                  ) {
+                                    setReplyingTo(null);
+                                  }
+                                }}
+                              />
+                            </span>
+                          ) : null}
+                        </div>
+                      </article>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="flex min-h-72 flex-col items-center justify-center px-6 text-center">
+                <span className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                  <MessageCircle aria-hidden="true" className="size-5" />
+                </span>
+                <h3 className="mt-4 text-sm font-semibold">No messages yet</h3>
+                <p className="mt-2 max-w-sm text-xs leading-5 text-muted-foreground">
+                  Start with a locality question or share a useful housing update
+                  with your community.
+                </p>
+              </div>
+            )}
+          </div>
+
+          {newMessageCount > 0 ? (
+            <Button
+              type="button"
+              size="sm"
+              onClick={jumpToLatestMessage}
+              aria-live="polite"
+              className="absolute bottom-4 left-1/2 z-10 -translate-x-1/2 rounded-full px-4 shadow-lg"
+            >
+              <ArrowDown aria-hidden="true" className="size-4" />
+              {newMessageCount === 1
+                ? "1 new message"
+                : `${newMessageCount} new messages`}
+            </Button>
+          ) : null}
         </div>
 
         <form
@@ -360,13 +630,50 @@ export function CommunityChat({
           <label htmlFor="community-message" className="sr-only">
             Message {locality} community
           </label>
+          {sendError ? (
+            <p
+              role="alert"
+              className="mb-3 flex items-start gap-2 rounded-xl border border-destructive/25 bg-destructive/8 px-3 py-2.5 text-xs font-medium leading-5 text-destructive"
+            >
+              <CircleAlert
+                aria-hidden="true"
+                className="mt-0.5 size-3.5 shrink-0"
+              />
+              {sendError}
+            </p>
+          ) : null}
+          {replyingTo ? (
+            <div className="mb-3 flex items-start gap-3 rounded-xl border border-border/75 bg-muted/45 px-3 py-2.5">
+              <Reply aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-primary" />
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold">
+                  Replying to {replyingTo.sender.name}
+                </p>
+                <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                  {replyingTo.body}
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Cancel reply"
+                onClick={() => setReplyingTo(null)}
+              >
+                <X aria-hidden="true" className="size-3.5" />
+              </Button>
+            </div>
+          ) : null}
           <div className="flex items-end gap-2">
             <textarea
               id="community-message"
               rows={1}
               value={draft}
               maxLength={MAX_COMMUNITY_MESSAGE_LENGTH}
-              onChange={(event) => setDraft(event.target.value)}
+              onChange={(event) => {
+                setDraft(event.target.value);
+                if (sendError) setSendError("");
+              }}
               onKeyDown={handleKeyDown}
               placeholder={`Message ${locality} community`}
               className="max-h-32 min-h-11 flex-1 resize-none rounded-xl border border-input bg-background px-3.5 py-2.5 text-sm leading-5 outline-none focus:border-primary focus:ring-3 focus:ring-ring/15"
@@ -386,7 +693,7 @@ export function CommunityChat({
             </Button>
           </div>
           <p className="mt-2 text-[0.6875rem] text-muted-foreground">
-            Press Enter to send · Shift+Enter for a new line
+            Press Enter to send · Shift+Enter for a new line · Use @Full Name to mention someone
           </p>
         </form>
       </div>

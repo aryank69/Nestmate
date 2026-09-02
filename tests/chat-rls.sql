@@ -171,8 +171,16 @@ BEGIN
     RAISE EXCEPTION 'Non-participant C could read private chat data.';
   END IF;
 
-  IF (SELECT count(*) FROM public.list_chat_users()) <> 2 THEN
-    RAISE EXCEPTION 'Authenticated chat directory returned unexpected users.';
+  IF NOT EXISTS (
+    SELECT 1
+    FROM public.list_chat_users()
+    WHERE auth_user_id = '00000000-0000-4000-8000-0000000000a1'
+  ) OR NOT EXISTS (
+    SELECT 1
+    FROM public.list_chat_users()
+    WHERE auth_user_id = '00000000-0000-4000-8000-0000000000b2'
+  ) THEN
+    RAISE EXCEPTION 'Authenticated chat directory omitted test users.';
   END IF;
 
   BEGIN

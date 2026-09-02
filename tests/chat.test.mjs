@@ -33,6 +33,7 @@ test("conversation rows normalize unread counts from Postgres bigint values", ()
   const [conversation] = normalizeConversationRows([
     {
       conversation_id: "conversation-1",
+      other_user_id: "user-2",
       other_auth_user_id: "auth-2",
       other_name: "Nisha Rao",
       other_profession: "Engineer",
@@ -43,6 +44,7 @@ test("conversation rows normalize unread counts from Postgres bigint values", ()
   ]);
 
   assert.equal(conversation.unreadCount, 3);
+  assert.equal(conversation.otherUser.id, "user-2");
   assert.equal(conversation.otherUser.name, "Nisha Rao");
 });
 

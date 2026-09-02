@@ -36,6 +36,7 @@ export default async function CreateLocalityCommunityPostPage({
             initialCity={community.city}
             initialLocality={community.locality}
             lockedCommunity={community}
+            authUserId={data.claims.sub}
           />
         </section>
       </main>

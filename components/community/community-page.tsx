@@ -4,8 +4,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import {
+  Armchair,
   BadgeCheck,
+  Bath,
+  BedDouble,
   CalendarDays,
+  Car,
   ChevronDown,
   CircleAlert,
   Clock3,
@@ -16,15 +20,21 @@ import {
   MessagesSquare,
   PencilLine,
   SearchX,
+  Sparkles,
   Trash2,
+  UserRoundCheck,
   UsersRound,
+  Wrench,
 } from "lucide-react";
 
 import {
   deleteCommunityPostAction,
 } from "@/app/community/actions";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { PostImageGallery } from "@/components/community/post-image-gallery";
 import { CompatibilitySummary } from "@/components/compatibility/compatibility-summary";
+import { SavePostButton } from "@/components/saved/saved-controls";
+import { SafetyActions } from "@/components/trust-safety/safety-actions";
 import {
   communityCategories,
   isPostCategory,
@@ -36,6 +46,7 @@ import {
   compatibilityProfileFromUserProfile,
 } from "@/lib/compatibility";
 import type {
+  CommunityListingDetails,
   CommunityPost,
   CommunityPostCategory,
   CommunityLocationOption,
@@ -52,12 +63,83 @@ const categoryStyles: Record<CommunityPostCategory, string> = {
 const selectClassName =
   "h-12 w-full appearance-none rounded-xl border border-input bg-background pl-10 pr-10 text-sm font-semibold text-foreground shadow-xs outline-none transition-[border-color,box-shadow] hover:border-border focus:border-primary focus:ring-3 focus:ring-ring/15";
 
+function ListingDetails({ details }: { details: CommunityListingDetails }) {
+  const items = [
+    { label: "Furnishing", value: details.furnishing, icon: Armchair },
+    { label: "Occupancy", value: details.occupancy, icon: UsersRound },
+    { label: "Room type", value: details.roomType, icon: BedDouble },
+    { label: "Security deposit", value: details.deposit, icon: IndianRupee },
+    { label: "Monthly maintenance", value: details.maintenance, icon: Wrench },
+    {
+      label: "Preferred tenant / flatmate",
+      value: details.preferredOccupant,
+      icon: UserRoundCheck,
+    },
+    { label: "Attached bathroom", value: details.attachedBathroom, icon: Bath },
+    { label: "Parking", value: details.parking, icon: Car },
+  ];
+
+  return (
+    <section className="mt-5 rounded-2xl border border-border/80 bg-muted/25 p-4 sm:p-5">
+      <div className="flex items-center gap-3">
+        <span className="flex size-10 items-center justify-center rounded-xl bg-secondary text-secondary-foreground">
+          <BedDouble aria-hidden="true" className="size-5" />
+        </span>
+        <div>
+          <h4 className="font-semibold">Home details</h4>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            The essentials for planning your visit and move.
+          </p>
+        </div>
+      </div>
+
+      <dl className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {items.map(({ label, value, icon: Icon }) => (
+          <div key={label} className="rounded-xl border border-border/70 bg-background p-3.5">
+            <dt className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+              <Icon aria-hidden="true" className="size-3.5 text-primary" />
+              {label}
+            </dt>
+            <dd className="mt-1.5 text-sm font-semibold">
+              {value ?? "Not specified"}
+            </dd>
+          </div>
+        ))}
+      </dl>
+
+      <div className="mt-4">
+        <p className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+          <Sparkles aria-hidden="true" className="size-3.5 text-primary" />
+          Amenities
+        </p>
+        {details.amenities.length ? (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {details.amenities.map((amenity) => (
+              <span key={amenity} className="rounded-full border border-primary/15 bg-primary/[0.05] px-3 py-1.5 text-xs font-medium text-foreground">
+                {amenity}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-1.5 text-sm text-muted-foreground">No amenities listed.</p>
+        )}
+      </div>
+    </section>
+  );
+}
+
 export function CommunityPostCard({
   post,
   viewerProfile,
+  showSafetyActions = Boolean(viewerProfile),
+  showSaveAction = Boolean(viewerProfile),
+  detail = false,
 }: {
   post: CommunityPost;
   viewerProfile: UserProfile | null;
+  showSafetyActions?: boolean;
+  showSaveAction?: boolean;
+  detail?: boolean;
 }) {
   const candidateProfile = post.author.compatibilityProfile;
   const compatibility =
@@ -69,7 +151,7 @@ export function CommunityPostCard({
       : null;
 
   return (
-    <article className="surface-card p-5 transition-[border-color,box-shadow] hover:border-primary/20 hover:shadow-xl hover:shadow-foreground/[0.06] sm:p-6">
+    <article className="group/card surface-card p-5 transition-[border-color,box-shadow] hover:border-primary/20 hover:shadow-xl hover:shadow-foreground/[0.06] sm:p-6">
       <header className="flex items-start gap-3.5">
         <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-secondary text-sm font-bold text-secondary-foreground ring-4 ring-secondary/35 sm:size-12">
           {post.author.initials}
@@ -92,15 +174,31 @@ export function CommunityPostCard({
           </p>
         </div>
 
-        <span
-          className={cn(
-            "hidden shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold sm:inline-flex",
-            categoryStyles[post.category],
-          )}
-        >
-          {post.category}
-        </span>
+        <div className="flex shrink-0 items-center gap-1">
+          {showSaveAction ? (
+            <SavePostButton
+              postId={post.id}
+              initialSaved={Boolean(post.isSaved)}
+            />
+          ) : null}
+          <span
+            className={cn(
+              "hidden rounded-full px-3 py-1.5 text-xs font-semibold sm:inline-flex",
+              categoryStyles[post.category],
+            )}
+          >
+            {post.category}
+          </span>
+          {showSafetyActions && !post.isOwner ? (
+            <SafetyActions
+              target={{ type: "POST", id: post.id, label: "post" }}
+              user={{ id: post.author.id, name: post.author.name }}
+            />
+          ) : null}
+        </div>
       </header>
+
+      <PostImageGallery images={post.images} title={post.title} detail={detail} />
 
       <div className="mt-5">
         <span
@@ -137,7 +235,7 @@ export function CommunityPostCard({
         <div className="rounded-xl border border-border/70 bg-muted/45 px-3.5 py-3">
           <dt className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
             <CalendarDays aria-hidden="true" className="size-3.5 text-primary" />
-            Move-in
+            {post.listingDetails ? "Available from" : "Move-in"}
           </dt>
           <dd className="mt-1.5 text-sm font-semibold">{post.moveInDate}</dd>
         </div>
@@ -154,6 +252,10 @@ export function CommunityPostCard({
         ))}
       </div>
 
+      {detail && post.listingDetails ? (
+        <ListingDetails details={post.listingDetails} />
+      ) : null}
+
       {compatibility ? (
         <CompatibilitySummary result={compatibility} />
       ) : candidateProfile ? (
@@ -168,14 +270,28 @@ export function CommunityPostCard({
           <Clock3 aria-hidden="true" className="size-3.5" />
           Posted {post.postedAt}
         </p>
-        <Button type="button" variant="outline" className="w-full sm:w-auto">
-          View Details
-        </Button>
+        {!detail ? (
+          <Link
+            href={`/community/post/${encodeURIComponent(post.id)}`}
+            className={cn(
+              buttonVariants({ variant: "outline" }),
+              "w-full sm:w-auto",
+            )}
+          >
+            View Details
+          </Link>
+        ) : null}
         {post.isOwner ? (
           <PostOwnerActions postId={post.id} />
         ) : (
           <Link
-            href="/chat"
+            href={{
+              pathname: "/chat",
+              query: {
+                user: post.author.authUserId,
+                post: post.id,
+              },
+            }}
             className={cn(buttonVariants(), "w-full sm:w-auto")}
           >
             <MessageCircle aria-hidden="true" className="size-4" />

@@ -3,6 +3,11 @@
 import { revalidatePath } from "next/cache";
 
 import { communityPath, validateCommunityPost } from "@/lib/community";
+import {
+  isOwnedListingImagePath,
+  LISTING_IMAGE_BUCKET,
+  MAX_LISTING_IMAGES,
+} from "@/lib/listing-images";
 import { prisma } from "@/lib/prisma";
 import { ensureUserProfile } from "@/lib/profile-data";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -232,6 +237,97 @@ export async function saveCommunityPostAction(
   };
 }
 
+export async function updateCommunityPostImagesAction(
+  postId: string,
+  imagePaths: string[],
+): Promise<CommunityPostActionState> {
+  if (!postId || postId.length > 128 || !Array.isArray(imagePaths)) {
+    return failure("Choose a valid post and images.");
+  }
+
+  if (
+    imagePaths.length > MAX_LISTING_IMAGES ||
+    new Set(imagePaths).size !== imagePaths.length
+  ) {
+    return failure("A post can contain up to 6 unique images.");
+  }
+
+  const context = await authenticatedPostContext();
+  if (!context) {
+    return failure("Your session has expired. Please log in again.");
+  }
+
+  const ownedPost = await prisma.post.findFirst({
+    where: {
+      id: postId,
+      status: "ACTIVE",
+      author: { authUserId: context.claims.sub },
+    },
+    select: {
+      id: true,
+      type: true,
+      community: {
+        select: {
+          locality: {
+            select: {
+              slug: true,
+              city: { select: { slug: true } },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!ownedPost) {
+    return failure("This post was not found or you do not own it.");
+  }
+
+  const supportsImages =
+    ownedPost.type === "ROOM_AVAILABLE" || ownedPost.type === "PG_AVAILABLE";
+  if (!supportsImages && imagePaths.length) {
+    return failure("Images are available only for room and PG listings.");
+  }
+
+  if (
+    imagePaths.some(
+      (path) =>
+        typeof path !== "string" ||
+        !isOwnedListingImagePath(path, context.claims.sub, postId),
+    )
+  ) {
+    return failure("One or more image paths are invalid.");
+  }
+
+  const now = new Date().toISOString();
+  const { data, error } = await context.supabase
+    .from("Post")
+    .update({ imagePaths, updatedAt: now })
+    .eq("id", postId)
+    .eq("authorId", context.user.id)
+    .select("id")
+    .maybeSingle();
+
+  if (error || !data) {
+    console.error("Community post image update failed", error?.message);
+    return failure("We could not attach the selected images. Please try again.");
+  }
+
+  const roomPath = communityPath({
+    citySlug: ownedPost.community.locality.city.slug,
+    localitySlug: ownedPost.community.locality.slug,
+  });
+  revalidatePath(roomPath);
+  revalidatePath(`/community/post/${postId}`);
+  revalidatePath(`/community/post/${postId}/edit`);
+  return {
+    success: true,
+    message: "Your listing images were updated.",
+    postId,
+    communityPath: roomPath,
+  };
+}
+
 export async function deleteCommunityPostAction(
   postId: string,
 ): Promise<CommunityPostActionState> {
@@ -248,6 +344,7 @@ export async function deleteCommunityPostAction(
     where: { id: postId, author: { authUserId: context.claims.sub } },
     select: {
       id: true,
+      imagePaths: true,
       community: {
         select: {
           locality: {
@@ -263,6 +360,19 @@ export async function deleteCommunityPostAction(
 
   if (!ownedPost) {
     return failure("This post was not found or you do not own it.");
+  }
+
+  if (ownedPost.imagePaths.length) {
+    const { error: storageError } = await context.supabase.storage
+      .from(LISTING_IMAGE_BUCKET)
+      .remove(ownedPost.imagePaths);
+
+    if (storageError) {
+      console.error("Community post image deletion failed", storageError.message);
+      return failure(
+        "We could not remove this post’s images safely. Please try again.",
+      );
+    }
   }
 
   const { error, count } = await context.supabase

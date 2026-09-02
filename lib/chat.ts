@@ -25,6 +25,7 @@ export function normalizeConversationRows(
   return (rows ?? []).map((row) => ({
     id: row.conversation_id,
     otherUser: {
+      id: row.other_user_id,
       authUserId: row.other_auth_user_id,
       name: row.other_name,
       profession: row.other_profession,
@@ -37,6 +38,7 @@ export function normalizeConversationRows(
 
 export function normalizeChatUsers(rows: ChatUserRow[] | null): ChatUser[] {
   return (rows ?? []).map((row) => ({
+    id: row.user_id,
     authUserId: row.auth_user_id,
     name: row.display_name,
     profession: row.profession,

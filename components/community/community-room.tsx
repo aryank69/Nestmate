@@ -8,38 +8,49 @@ import {
   Check,
   ChevronDown,
   CircleAlert,
+  IndianRupee,
   LoaderCircle,
   LockKeyhole,
   MapPin,
   MessageCircle,
   PencilLine,
+  Search,
   SearchX,
+  SlidersHorizontal,
   UsersRound,
 } from "lucide-react";
 
 import { joinCommunityAction } from "@/app/community/actions";
 import { CommunityChat } from "@/components/community/community-chat";
 import { CommunityPostCard } from "@/components/community/community-page";
+import { SaveSearchButton } from "@/components/saved/saved-controls";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { communityPath } from "@/lib/community";
+import {
+  activeCommunityFilterCount,
+  communityFilterQuery,
+} from "@/lib/discovery";
 import { cn } from "@/lib/utils";
 import type {
   CommunityLocationOption,
   CommunityPost,
-  CommunityPostCategory,
 } from "@/types/community";
 import type { CommunityChatIdentity } from "@/types/community-chat";
+import type {
+  CommunityPostFilters,
+  CommunityPostTypeCounts,
+} from "@/types/discovery";
 import type { UserProfile } from "@/types/profile";
 
 const roomTabs: {
   label: string;
-  value: CommunityPostCategory | null;
+  value: CommunityPostFilters["postType"];
 }[] = [
   { label: "All", value: null },
-  { label: "Need Room", value: "Need a Room" },
-  { label: "Room Available", value: "Room Available" },
-  { label: "Need Flatmate", value: "Need Flatmate" },
-  { label: "PG Available", value: "PG Available" },
+  { label: "Need Room", value: "NEED_ROOM" },
+  { label: "Room Available", value: "ROOM_AVAILABLE" },
+  { label: "Need Flatmate", value: "NEED_FLATMATE" },
+  { label: "PG Available", value: "PG_AVAILABLE" },
 ];
 
 const selectClassName =
@@ -49,20 +60,26 @@ export function CommunityRoom({
   community,
   locations,
   posts,
+  postTypeCounts,
+  filters,
   viewerProfile,
   isAuthenticated,
   isMember,
   chatIdentity,
   initialChatUnreadCount,
+  initialView,
 }: {
   community: CommunityLocationOption;
   locations: CommunityLocationOption[];
   posts: CommunityPost[];
+  postTypeCounts: CommunityPostTypeCounts;
+  filters: CommunityPostFilters;
   viewerProfile: UserProfile | null;
   isAuthenticated: boolean;
   isMember: boolean;
   chatIdentity: CommunityChatIdentity | null;
   initialChatUnreadCount: number;
+  initialView: "posts" | "chat";
 }) {
   const router = useRouter();
   const currentPath = communityPath(community);
@@ -79,18 +96,22 @@ export function CommunityRoom({
   const destination =
     destinationLocations.find((location) => location.id === destinationId) ??
     destinationLocations[0];
-  const [selectedCategory, setSelectedCategory] =
-    useState<CommunityPostCategory | null>(null);
-  const [activeView, setActiveView] = useState<"posts" | "chat">("posts");
+  const [activeView, setActiveView] = useState<"posts" | "chat">(
+    initialView === "chat" && isMember ? "chat" : "posts",
+  );
   const [chatUnreadCount, setChatUnreadCount] = useState(
     initialChatUnreadCount,
   );
   const [joinError, setJoinError] = useState("");
   const [isJoining, startJoinTransition] = useTransition();
 
-  const visiblePosts = selectedCategory
-    ? posts.filter((post) => post.category === selectedCategory)
-    : posts;
+  const activeFilterCount = activeCommunityFilterCount(filters);
+  const currentFilterQuery = communityFilterQuery(filters, filters.postType);
+  const savedSearchHref = `${currentPath}${currentFilterQuery ? `?${currentFilterQuery}` : ""}`;
+  const allPostCount = Object.values(postTypeCounts).reduce(
+    (total, count) => total + count,
+    0,
+  );
 
   const changeDestinationCity = (city: string) => {
     setDestinationCity(city);
@@ -268,18 +289,17 @@ export function CommunityRoom({
             className="mx-auto flex max-w-5xl gap-1 overflow-x-auto py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
             {roomTabs.map((tab) => {
-              const count = tab.value
-                ? posts.filter((post) => post.category === tab.value).length
-                : posts.length;
-              const isActive = selectedCategory === tab.value;
+              const count = tab.value ? postTypeCounts[tab.value] : allPostCount;
+              const isActive = filters.postType === tab.value;
+              const query = communityFilterQuery(filters, tab.value);
               return (
-                <button
+                <Link
                   key={tab.label}
-                  type="button"
                   role="tab"
                   aria-selected={isActive}
                   aria-controls="locality-community-feed"
-                  onClick={() => setSelectedCategory(tab.value)}
+                  href={query ? `${currentPath}?${query}` : currentPath}
+                  scroll={false}
                   className={cn(
                     "inline-flex shrink-0 items-center gap-2 rounded-xl px-3.5 py-2.5 text-sm font-semibold outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/25",
                     isActive
@@ -298,7 +318,7 @@ export function CommunityRoom({
                   >
                     {count}
                   </span>
-                </button>
+                </Link>
               );
             })}
           </div>
@@ -309,20 +329,128 @@ export function CommunityRoom({
       {activeView === "posts" ? (
       <section className="content-shell py-8 sm:py-10">
         <div className="mx-auto max-w-3xl">
+          <div className="surface-card mb-6 p-4 sm:p-5">
+            <form action={currentPath} method="get" className="space-y-4">
+              {filters.postType ? (
+                <input type="hidden" name="type" value={filters.postType} />
+              ) : null}
+              <div className="grid gap-3 sm:grid-cols-[1fr_12rem]">
+                <label className="relative block">
+                  <span className="sr-only">Search community posts</span>
+                  <Search
+                    aria-hidden="true"
+                    className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                  />
+                  <input
+                    name="q"
+                    type="search"
+                    defaultValue={filters.query}
+                    placeholder="Search posts or people"
+                    className="h-11 w-full rounded-xl border border-input bg-background pl-10 pr-4 text-sm outline-none transition-[border-color,box-shadow] focus:border-primary focus:ring-3 focus:ring-ring/15"
+                  />
+                </label>
+                <label className="relative block">
+                  <span className="sr-only">Sort posts</span>
+                  <select
+                    name="sort"
+                    defaultValue={filters.sort}
+                    className="h-11 w-full appearance-none rounded-xl border border-input bg-background px-3 pr-9 text-sm font-semibold outline-none focus:border-primary focus:ring-3 focus:ring-ring/15"
+                  >
+                    <option value="newest">Newest first</option>
+                    <option value="lowest-amount">Lowest amount</option>
+                  </select>
+                  <ChevronDown aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                </label>
+              </div>
+
+              <details open={activeFilterCount > 0} className="group">
+                <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-semibold text-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/20 [&::-webkit-details-marker]:hidden">
+                  <SlidersHorizontal aria-hidden="true" className="size-4 text-primary" />
+                  More filters
+                  {activeFilterCount ? (
+                    <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">
+                      {activeFilterCount} active
+                    </span>
+                  ) : null}
+                </summary>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <FilterInput
+                    label="Minimum ₹"
+                    name="min"
+                    value={filters.budgetMin}
+                    icon={IndianRupee}
+                  />
+                  <FilterInput
+                    label="Maximum ₹"
+                    name="max"
+                    value={filters.budgetMax}
+                    icon={IndianRupee}
+                  />
+                  <label className="space-y-1.5 text-xs font-semibold text-muted-foreground">
+                    Move in by
+                    <input
+                      type="date"
+                      name="moveInBy"
+                      defaultValue={filters.moveInBy}
+                      className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm font-medium text-foreground outline-none focus:border-primary focus:ring-3 focus:ring-ring/15"
+                    />
+                  </label>
+                  <label className="relative space-y-1.5 text-xs font-semibold text-muted-foreground">
+                    Gender preference
+                    <span className="relative block">
+                      <select
+                        name="gender"
+                        defaultValue={filters.genderPreference ?? ""}
+                        className="h-11 w-full appearance-none rounded-xl border border-input bg-background px-3 pr-9 text-sm font-medium text-foreground outline-none focus:border-primary focus:ring-3 focus:ring-ring/15"
+                      >
+                        <option value="">Any preference</option>
+                        <option value="WOMEN">Women welcome</option>
+                        <option value="MEN">Men welcome</option>
+                        <option value="ANY">Any-gender posts</option>
+                      </select>
+                      <ChevronDown aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                    </span>
+                  </label>
+                </div>
+              </details>
+
+              <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                <Link href={currentPath} className={cn(buttonVariants({ variant: "ghost" }), "w-full sm:w-auto")}>Clear filters</Link>
+                <Button type="submit" className="w-full sm:w-auto">
+                  <Search aria-hidden="true" className="size-4" />
+                  Show matches
+                </Button>
+              </div>
+            </form>
+            {isAuthenticated ? (
+              <div className="mt-4 flex justify-end border-t border-border/70 pt-4">
+                <SaveSearchButton
+                  kind="COMMUNITY_POSTS"
+                  href={savedSearchHref}
+                  defaultName={`${community.locality} housing`}
+                />
+              </div>
+            ) : null}
+          </div>
+
           <div className="mb-5">
-            <h2 className="text-xl font-semibold">Latest posts</h2>
+            <h2 className="text-xl font-semibold">
+              {filters.sort === "lowest-amount" ? "Best-priced posts" : "Latest posts"}
+            </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              {visiblePosts.length} {visiblePosts.length === 1 ? "post" : "posts"} in {community.locality}
+              {posts.length} {posts.length === 1 ? "match" : "matches"} in {community.locality}
             </p>
           </div>
 
           <div id="locality-community-feed" role="tabpanel" className="space-y-5">
-            {visiblePosts.length ? (
-              visiblePosts.map((post) => (
+            {posts.length ? (
+              posts.map((post) => (
                 <CommunityPostCard
                   key={post.id}
                   post={post}
                   viewerProfile={viewerProfile}
+                  showSafetyActions={isAuthenticated}
+                  showSaveAction={isAuthenticated}
                 />
               ))
             ) : (
@@ -330,9 +458,9 @@ export function CommunityRoom({
                 <span className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
                   <SearchX aria-hidden="true" className="size-5" />
                 </span>
-                <h3 className="mt-4 text-lg font-semibold">No posts here yet</h3>
+                <h3 className="mt-4 text-lg font-semibold">No matching posts</h3>
                 <p className="mt-2 max-w-sm text-sm leading-6 text-muted-foreground">
-                  Be the first to publish a structured housing post in {community.locality}.
+                  Try widening the budget or date filters, or clear the search to see all posts in {community.locality}.
                 </p>
               </div>
             )}
@@ -386,6 +514,36 @@ export function CommunityRoom({
         </section>
       ) : null}
     </>
+  );
+}
+
+function FilterInput({
+  label,
+  name,
+  value,
+  icon: Icon,
+}: {
+  label: string;
+  name: string;
+  value: number | null;
+  icon: typeof IndianRupee;
+}) {
+  return (
+    <label className="space-y-1.5 text-xs font-semibold text-muted-foreground">
+      {label}
+      <span className="relative block">
+        <Icon aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+        <input
+          type="number"
+          min="0"
+          max="10000000"
+          step="500"
+          name={name}
+          defaultValue={value ?? ""}
+          className="h-11 w-full rounded-xl border border-input bg-background pl-9 pr-3 text-sm font-medium text-foreground outline-none focus:border-primary focus:ring-3 focus:ring-ring/15"
+        />
+      </span>
+    </label>
   );
 }
 

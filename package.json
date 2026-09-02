@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev -p 3002",
     "build": "prisma generate && next build",
-    "test": "node --test tests/compatibility.test.mjs tests/chat.test.mjs tests/community-chat.test.mjs tests/community.test.mjs",
+    "test": "node --test tests/compatibility.test.mjs tests/chat.test.mjs tests/community-chat.test.mjs tests/community.test.mjs tests/discovery.test.mjs tests/listing-images.test.mjs tests/notifications.test.mjs tests/saved.test.mjs tests/trust-safety.test.mjs",
     "start": "next start",
     "lint": "eslint",
     "db:generate": "prisma generate",

@@ -40,6 +40,7 @@ export default async function EditCommunityPostPage({
             initialCity=""
             initialLocality=""
             initialPost={initialPost}
+            authUserId={data.claims.sub}
           />
         </section>
       </main>

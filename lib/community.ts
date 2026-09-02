@@ -37,6 +37,28 @@ export const DATABASE_TO_GENDER = {
   MEN: "Men only",
 } as const;
 
+export const FURNISHING_OPTIONS = [
+  "Furnished",
+  "Semi-furnished",
+  "Unfurnished",
+] as const;
+
+export const PREFERRED_OCCUPANT_OPTIONS = [
+  "Any",
+  "Working professional",
+  "Student",
+  "Family",
+] as const;
+
+export const PARKING_OPTIONS = [
+  "No parking",
+  "Two-wheeler",
+  "Car",
+  "Car and two-wheeler",
+] as const;
+
+export const ATTACHED_BATHROOM_OPTIONS = ["Yes", "No"] as const;
+
 export const HOUSING_OPTIONS: Record<
   CommunityPostCategory,
   { housingTypes: string[]; housingFeatures: string[] }
@@ -86,6 +108,16 @@ type ValidatedPostValues = {
     | "SEMI_FURNISHED"
     | "UNFURNISHED"
     | null;
+  securityDeposit: number | null;
+  maintenanceAmount: number | null;
+  preferredOccupant:
+    | "ANY"
+    | "WORKING_PROFESSIONAL"
+    | "STUDENT"
+    | "FAMILY"
+    | null;
+  attachedBathroom: boolean | null;
+  parkingType: "NONE" | "TWO_WHEELER" | "CAR" | "BOTH" | null;
   bedrooms: number | null;
   availableSpots: number | null;
   mealsIncluded: boolean | null;
@@ -124,6 +156,35 @@ export function validateCommunityPost(
     .split(",")
     .map((tag) => tag.trim())
     .filter(Boolean);
+  const amenities = uniqueTags(
+    (input.amenities ?? "")
+      .split(",")
+      .map((amenity) => amenity.trim())
+      .filter(Boolean),
+  );
+  const isListing =
+    category === "Room Available" || category === "PG Available";
+
+  const optionalAmount = (
+    field: "securityDeposit" | "maintenanceAmount",
+    label: string,
+  ) => {
+    const value = input[field]?.trim() ?? "";
+    if (!value) return null;
+    const amount = Number(value);
+    if (!Number.isInteger(amount) || amount < 0 || amount > 10_000_000) {
+      errors[field] = `Enter a valid ${label}.`;
+      return null;
+    }
+    return amount;
+  };
+
+  const securityDeposit = isListing
+    ? optionalAmount("securityDeposit", "deposit")
+    : null;
+  const maintenanceAmount = isListing
+    ? optionalAmount("maintenanceAmount", "maintenance amount")
+    : null;
 
   if (!(category in POST_TYPE_TO_DATABASE)) {
     errors.postType = "Choose a valid post type.";
@@ -157,6 +218,49 @@ export function validateCommunityPost(
     customTags.some((tag) => tag.length < 2 || tag.length > 30)
   ) {
     errors.tags = "Add up to 5 tags, each between 2 and 30 characters.";
+  }
+  if (
+    amenities.length > 8 ||
+    amenities.some((amenity) => amenity.length < 2 || amenity.length > 40)
+  ) {
+    errors.amenities =
+      "Add up to 8 amenities, each between 2 and 40 characters.";
+  }
+  if (
+    isListing &&
+    input.furnishingStatus &&
+    !FURNISHING_OPTIONS.includes(
+      input.furnishingStatus as (typeof FURNISHING_OPTIONS)[number],
+    )
+  ) {
+    errors.furnishingStatus = "Choose a valid furnishing option.";
+  }
+  if (
+    isListing &&
+    input.preferredOccupant &&
+    !PREFERRED_OCCUPANT_OPTIONS.includes(
+      input.preferredOccupant as (typeof PREFERRED_OCCUPANT_OPTIONS)[number],
+    )
+  ) {
+    errors.preferredOccupant = "Choose a valid tenant preference.";
+  }
+  if (
+    isListing &&
+    input.attachedBathroom &&
+    !ATTACHED_BATHROOM_OPTIONS.includes(
+      input.attachedBathroom as (typeof ATTACHED_BATHROOM_OPTIONS)[number],
+    )
+  ) {
+    errors.attachedBathroom = "Choose a valid bathroom option.";
+  }
+  if (
+    isListing &&
+    input.parkingType &&
+    !PARKING_OPTIONS.includes(
+      input.parkingType as (typeof PARKING_OPTIONS)[number],
+    )
+  ) {
+    errors.parkingType = "Choose a valid parking option.";
   }
 
   if (Object.keys(errors).length || !options) {
@@ -216,6 +320,40 @@ export function validateCommunityPost(
       input.housingFeature === "Shared room" ? "SHARED_ROOM" : "PRIVATE_ROOM";
   }
 
+  if (isListing) {
+    furnishingStatus =
+      input.furnishingStatus === "Furnished"
+        ? "FURNISHED"
+        : input.furnishingStatus === "Semi-furnished"
+          ? "SEMI_FURNISHED"
+          : input.furnishingStatus === "Unfurnished"
+            ? "UNFURNISHED"
+            : null;
+  }
+
+  const preferredOccupant: ValidatedPostValues["preferredOccupant"] = isListing
+    ? input.preferredOccupant === "Working professional"
+      ? "WORKING_PROFESSIONAL"
+      : input.preferredOccupant === "Student"
+        ? "STUDENT"
+        : input.preferredOccupant === "Family"
+          ? "FAMILY"
+          : input.preferredOccupant === "Any"
+            ? "ANY"
+            : null
+    : null;
+  const parkingType: ValidatedPostValues["parkingType"] = isListing
+    ? input.parkingType === "Two-wheeler"
+      ? "TWO_WHEELER"
+      : input.parkingType === "Car"
+        ? "CAR"
+        : input.parkingType === "Car and two-wheeler"
+          ? "BOTH"
+          : input.parkingType === "No parking"
+            ? "NONE"
+            : null
+    : null;
+
   const contextualTags = [
     input.genderPreference === "Any gender" ? "" : input.genderPreference,
     input.housingType,
@@ -240,10 +378,21 @@ export function validateCommunityPost(
       propertyType,
       roomType,
       furnishingStatus,
+      securityDeposit: isListing ? securityDeposit : null,
+      maintenanceAmount: isListing ? maintenanceAmount : null,
+      preferredOccupant,
+      attachedBathroom: isListing
+        ? input.attachedBathroom === "Yes"
+          ? true
+          : input.attachedBathroom === "No"
+            ? false
+            : null
+        : null,
+      parkingType,
       bedrooms,
       availableSpots,
       mealsIncluded,
-      amenities: [],
+      amenities: isListing ? amenities : [],
       tags: uniqueTags([...contextualTags, ...customTags]).slice(0, 8),
     },
   };

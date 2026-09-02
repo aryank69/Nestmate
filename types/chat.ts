@@ -1,4 +1,5 @@
 export type ChatUser = {
+  id: string;
   authUserId: string;
   name: string;
   profession: string | null;
@@ -27,6 +28,7 @@ export type ChatIdentity = {
 
 export type ChatConversationRow = {
   conversation_id: string;
+  other_user_id: string;
   other_auth_user_id: string;
   other_name: string;
   other_profession: string | null;
@@ -36,6 +38,7 @@ export type ChatConversationRow = {
 };
 
 export type ChatUserRow = {
+  user_id: string;
   auth_user_id: string;
   display_name: string;
   profession: string | null;

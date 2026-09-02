@@ -14,6 +14,13 @@ const compiled = ts.transpileModule(source, {
   },
 }).outputText;
 const communityModule = { exports: {} };
+const structuredListingMigration = readFileSync(
+  new URL(
+    "../prisma/migrations/20260902150000_structured_listing_details/migration.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 
 new Function("module", "exports", "require", compiled)(
   communityModule,
@@ -36,6 +43,13 @@ const validPost = {
   genderPreference: "Any gender",
   housingType: "2BHK",
   housingFeature: "Private room",
+  furnishingStatus: "Semi-furnished",
+  securityDeposit: "36000",
+  maintenanceAmount: "2500",
+  amenities: "Wi-Fi, Power backup, Wi-Fi",
+  preferredOccupant: "Working professional",
+  attachedBathroom: "Yes",
+  parkingType: "Two-wheeler",
   description:
     "A bright private room in a calm home with easy access to the metro.",
   tags: "No brokerage, Metro nearby",
@@ -49,6 +63,13 @@ test("room listings produce structured database fields and useful tags", () => {
   assert.equal(result.data.propertyType, "APARTMENT");
   assert.equal(result.data.roomType, "PRIVATE_ROOM");
   assert.equal(result.data.bedrooms, 2);
+  assert.equal(result.data.furnishingStatus, "SEMI_FURNISHED");
+  assert.equal(result.data.securityDeposit, 36000);
+  assert.equal(result.data.maintenanceAmount, 2500);
+  assert.equal(result.data.preferredOccupant, "WORKING_PROFESSIONAL");
+  assert.equal(result.data.attachedBathroom, true);
+  assert.equal(result.data.parkingType, "TWO_WHEELER");
+  assert.deepEqual(result.data.amenities, ["Wi-Fi", "Power backup"]);
   assert.deepEqual(result.data.tags, [
     "2BHK",
     "Private room",
@@ -68,6 +89,49 @@ test("need-a-room posts store a maximum budget", () => {
   assert.equal(result.success, true);
   assert.equal(result.data.monthlyAmountMin, null);
   assert.equal(result.data.monthlyAmountMax, 18000);
+  assert.equal(result.data.securityDeposit, null);
+  assert.equal(result.data.maintenanceAmount, null);
+  assert.equal(result.data.preferredOccupant, null);
+  assert.equal(result.data.attachedBathroom, null);
+  assert.equal(result.data.parkingType, null);
+  assert.deepEqual(result.data.amenities, []);
+});
+
+test("PG listings map occupancy and optional home details", () => {
+  const result = validateCommunityPost({
+    ...validPost,
+    postType: "PG Available",
+    housingType: "Twin sharing",
+    housingFeature: "Included",
+    furnishingStatus: "Furnished",
+    preferredOccupant: "Student",
+    attachedBathroom: "No",
+    parkingType: "No parking",
+  });
+
+  assert.equal(result.success, true);
+  assert.equal(result.data.propertyType, "PG");
+  assert.equal(result.data.roomType, "SHARED_ROOM");
+  assert.equal(result.data.availableSpots, 2);
+  assert.equal(result.data.mealsIncluded, true);
+  assert.equal(result.data.furnishingStatus, "FURNISHED");
+  assert.equal(result.data.preferredOccupant, "STUDENT");
+  assert.equal(result.data.attachedBathroom, false);
+  assert.equal(result.data.parkingType, "NONE");
+});
+
+test("invalid listing costs and excessive amenities are rejected", () => {
+  const result = validateCommunityPost({
+    ...validPost,
+    securityDeposit: "-1",
+    maintenanceAmount: "12.5",
+    amenities: "one, two, three, four, five, six, seven, eight, nine",
+  });
+
+  assert.equal(result.success, false);
+  assert.equal(Boolean(result.errors.securityDeposit), true);
+  assert.equal(Boolean(result.errors.maintenanceAmount), true);
+  assert.equal(Boolean(result.errors.amenities), true);
 });
 
 test("invalid and excessive user tags are rejected", () => {
@@ -94,4 +158,13 @@ test("locality communities have stable city and locality routes", () => {
     communityPath({ citySlug: "navi mumbai", localitySlug: "sector/17" }),
     "/community/navi%20mumbai/sector%2F17",
   );
+});
+
+test("structured listing migration adds constrained optional details", () => {
+  assert.match(structuredListingMigration, /"maintenanceAmount" INTEGER/);
+  assert.match(structuredListingMigration, /"preferredOccupant" public\."PreferredOccupant"/);
+  assert.match(structuredListingMigration, /"attachedBathroom" BOOLEAN/);
+  assert.match(structuredListingMigration, /"parkingType" public\."ParkingType"/);
+  assert.match(structuredListingMigration, /Post_listing_costs_check/);
+  assert.match(structuredListingMigration, /Post_structured_listing_details_check/);
 });

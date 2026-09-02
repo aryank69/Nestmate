@@ -27,9 +27,12 @@ new Function("module", "exports", "require", compiled)(
 const {
   MAX_COMMUNITY_MESSAGE_LENGTH,
   cleanCommunityMessageBody,
+  formatCommunityMessageDate,
+  isCommunityChatNearBottom,
   mergeCommunityChatMessage,
   nextCommunityUnreadCount,
   normalizeCommunityChatMessages,
+  shouldShowCommunityDateSeparator,
 } = chatModule.exports;
 
 const row = {
@@ -39,6 +42,9 @@ const row = {
   sender_name: "Nisha Rao",
   sender_profession: "Engineer",
   message_body: "Hello HSR",
+  reply_to_id: null,
+  reply_sender_name: null,
+  reply_body: null,
   created_at: "2026-08-31T10:00:00.000Z",
 };
 
@@ -48,6 +54,23 @@ test("community chat rows retain safe sender profile fields", () => {
   assert.equal(message.sender.name, "Nisha Rao");
   assert.equal(message.sender.profession, "Engineer");
   assert.equal(message.communityId, "community-1");
+});
+
+test("community chat rows retain structured reply previews", () => {
+  const [message] = normalizeCommunityChatMessages([
+    {
+      ...row,
+      reply_to_id: "00000000-0000-4000-8000-000000000099",
+      reply_sender_name: "Kabir Shah",
+      reply_body: "Is the room still available?",
+    },
+  ]);
+
+  assert.deepEqual(message.replyTo, {
+    id: "00000000-0000-4000-8000-000000000099",
+    senderName: "Kabir Shah",
+    body: "Is the room still available?",
+  });
 });
 
 test("realtime community messages merge once in timestamp order", () => {
@@ -108,4 +131,61 @@ test("community message bodies are trimmed and capped", () => {
 
   assert.equal(body.length, MAX_COMMUNITY_MESSAGE_LENGTH);
   assert.equal(body[0], "a");
+});
+
+test("date separators appear for the first message and when the day changes", () => {
+  assert.equal(
+    shouldShowCommunityDateSeparator("2026-08-31T10:00:00.000Z"),
+    true,
+  );
+  assert.equal(
+    shouldShowCommunityDateSeparator(
+      "2026-08-31T18:00:00.000Z",
+      "2026-08-31T10:00:00.000Z",
+    ),
+    false,
+  );
+  assert.equal(
+    shouldShowCommunityDateSeparator(
+      "2026-09-01T10:00:00.000Z",
+      "2026-08-31T18:00:00.000Z",
+    ),
+    true,
+  );
+});
+
+test("date labels distinguish today, yesterday, and older days", () => {
+  const now = new Date(2026, 8, 1, 12);
+
+  assert.equal(
+    formatCommunityMessageDate(new Date(2026, 8, 1, 9).toISOString(), now),
+    "Today",
+  );
+  assert.equal(
+    formatCommunityMessageDate(new Date(2026, 7, 31, 9).toISOString(), now),
+    "Yesterday",
+  );
+  assert.match(
+    formatCommunityMessageDate(new Date(2026, 7, 25, 9).toISOString(), now),
+    /25 August/,
+  );
+});
+
+test("the chat follows messages only when the viewport is near the bottom", () => {
+  assert.equal(
+    isCommunityChatNearBottom({
+      scrollHeight: 1000,
+      scrollTop: 620,
+      clientHeight: 300,
+    }),
+    true,
+  );
+  assert.equal(
+    isCommunityChatNearBottom({
+      scrollHeight: 1000,
+      scrollTop: 400,
+      clientHeight: 300,
+    }),
+    false,
+  );
 });
