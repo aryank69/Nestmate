@@ -14,8 +14,9 @@ export const COMMUNITY_POST_TYPE_OPTIONS: readonly CommunityPostTypeOption[] = [
 
 const postTypes = new Set(COMMUNITY_POST_TYPE_OPTIONS.map(({ value }) => value));
 const genderPreferences = new Set(["ANY", "WOMEN", "MEN"]);
-const communitySorts = new Set(["newest", "lowest-amount"]);
+const communitySorts = new Set(["recommended", "newest", "lowest-amount"]);
 const peopleSorts = new Set([
+  "recommended",
   "highest-compatibility",
   "lowest-budget",
   "newest",
@@ -57,6 +58,11 @@ function validDate(value: string | string[] | undefined) {
   return Number.isNaN(date.getTime()) ? "" : raw;
 }
 
+function commuteDistance(value: string | string[] | undefined) {
+  const parsed = positiveInteger(value);
+  return parsed !== null && parsed >= 1 && parsed <= 100 ? parsed : null;
+}
+
 function enumValue<T extends string>(
   value: string | string[] | undefined,
   allowed: Set<string>,
@@ -80,7 +86,8 @@ export function parseCommunityPostFilters(
       : maximum,
     moveInBy: validDate(params.moveInBy),
     genderPreference: enumValue(params.gender, genderPreferences),
-    sort: enumValue(params.sort, communitySorts) ?? "newest",
+    maximumDistanceKm: commuteDistance(params.distance),
+    sort: enumValue(params.sort, communitySorts) ?? "recommended",
   };
 }
 
@@ -106,7 +113,8 @@ export function parsePeopleFilters(params: SearchParamRecord): PeopleFilters {
     occupationStatus: enumValue(params.status, occupationStatuses),
     minimumCompatibility:
       compatibility !== null && compatibility <= 100 ? compatibility : null,
-    sort: enumValue(params.sort, peopleSorts) ?? "highest-compatibility",
+    preferredCommuteKm: commuteDistance(params.commute),
+    sort: enumValue(params.sort, peopleSorts) ?? "recommended",
   };
 }
 
@@ -121,7 +129,10 @@ export function communityFilterQuery(
   if (filters.budgetMax !== null) params.set("max", String(filters.budgetMax));
   if (filters.moveInBy) params.set("moveInBy", filters.moveInBy);
   if (filters.genderPreference) params.set("gender", filters.genderPreference);
-  if (filters.sort !== "newest") params.set("sort", filters.sort);
+  if (filters.maximumDistanceKm !== null) {
+    params.set("distance", String(filters.maximumDistanceKm));
+  }
+  if (filters.sort !== "recommended") params.set("sort", filters.sort);
   return params.toString();
 }
 
@@ -142,7 +153,10 @@ export function peopleFilterQuery(filters: PeopleFilters) {
   if (filters.minimumCompatibility !== null) {
     params.set("score", String(filters.minimumCompatibility));
   }
-  if (filters.sort !== "highest-compatibility") params.set("sort", filters.sort);
+  if (filters.preferredCommuteKm !== null) {
+    params.set("commute", String(filters.preferredCommuteKm));
+  }
+  if (filters.sort !== "recommended") params.set("sort", filters.sort);
   return params.toString();
 }
 
@@ -153,6 +167,7 @@ export function activeCommunityFilterCount(filters: CommunityPostFilters) {
     filters.budgetMax,
     filters.moveInBy,
     filters.genderPreference,
+    filters.maximumDistanceKm,
   ].filter((value) => value !== "" && value !== null).length;
 }
 
@@ -171,5 +186,6 @@ export function activePeopleFilterCount(filters: PeopleFilters) {
     filters.pets,
     filters.occupationStatus,
     filters.minimumCompatibility,
+    filters.preferredCommuteKm,
   ].filter((value) => value !== "" && value !== null).length;
 }

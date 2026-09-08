@@ -36,6 +36,10 @@ import {
   normalizeMessage,
 } from "@/lib/chat";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import {
+  getSafetyRestrictionMessage,
+  isSafetyRestrictionError,
+} from "@/lib/spam-safeguards";
 import { cn } from "@/lib/utils";
 import type {
   ChatConversation,
@@ -320,7 +324,11 @@ export function ChatPage({
       .single();
 
     if (error || !data) {
-      setErrorMessage("Your message was not sent. Please try again.");
+      setErrorMessage(
+        isSafetyRestrictionError(error)
+          ? getSafetyRestrictionMessage("direct-message")
+          : "Your message was not sent. Please try again.",
+      );
       setIsSending(false);
       return;
     }

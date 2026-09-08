@@ -23,6 +23,7 @@ import {
   ChevronDown,
   Home,
   IndianRupee,
+  LocateFixed,
   LoaderCircle,
   MapPin,
   MessageSquareText,
@@ -46,14 +47,17 @@ import {
   PostImageUploader,
   type ListingImageDraft,
 } from "@/components/community/post-image-uploader";
+import { PropertyMapFrame } from "@/components/maps/property-location-map";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   communityPath,
   ATTACHED_BATHROOM_OPTIONS,
   FURNISHING_OPTIONS,
   HOUSING_OPTIONS,
+  LOCATION_PRECISION_OPTIONS,
   PARKING_OPTIONS,
   PREFERRED_OCCUPANT_OPTIONS,
+  ROOM_OCCUPANCY_OPTIONS,
   validateCommunityPost,
 } from "@/lib/community";
 import {
@@ -62,6 +66,7 @@ import {
   supportsListingImages,
   validateListingImageFile,
 } from "@/lib/listing-images";
+import { publicMapPoint } from "@/lib/maps";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import type {
@@ -106,7 +111,7 @@ const postTypeOptions: PostTypeConfig[] = [
     amountLabel: "Monthly rent",
     dateLabel: "Available from",
     housingTypeLabel: "Property type",
-    housingFeatureLabel: "Room type / occupancy",
+    housingFeatureLabel: "Room type",
     descriptionPlaceholder:
       "Describe the room, home, current flatmates, nearby landmarks, and what makes it a good fit...",
   },
@@ -141,6 +146,7 @@ const initialActionState: CommunityPostActionState = {
   message: "",
 };
 const listingDetailFields: CommunityPostFormField[] = [
+  "occupancy",
   "furnishingStatus",
   "securityDeposit",
   "maintenanceAmount",
@@ -148,6 +154,11 @@ const listingDetailFields: CommunityPostFormField[] = [
   "preferredOccupant",
   "attachedBathroom",
   "parkingType",
+];
+const listingLocationFields: CommunityPostFormField[] = [
+  "locationLatitude",
+  "locationLongitude",
+  "locationPrecision",
 ];
 const inputClassName =
   "h-12 w-full rounded-xl border border-input bg-background px-4 text-[0.9375rem] font-medium text-foreground shadow-xs outline-none transition-[border-color,box-shadow] placeholder:font-normal placeholder:text-muted-foreground/75 hover:border-border focus:border-primary focus:ring-3 focus:ring-ring/15 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/10";
@@ -173,6 +184,7 @@ function emptyValues(communityId: string): CommunityPostFormValues {
     genderPreference: "",
     housingType: "",
     housingFeature: "",
+    occupancy: "",
     furnishingStatus: "",
     securityDeposit: "",
     maintenanceAmount: "",
@@ -180,6 +192,9 @@ function emptyValues(communityId: string): CommunityPostFormValues {
     preferredOccupant: "",
     attachedBathroom: "",
     parkingType: "",
+    locationLatitude: "",
+    locationLongitude: "",
+    locationPrecision: "Approximate",
     description: "",
     tags: "",
   };
@@ -226,6 +241,7 @@ export function CreatePostFlow({
     Boolean(
       initialPost &&
         (initialPost.furnishingStatus ||
+          initialPost.occupancy ||
           initialPost.securityDeposit ||
           initialPost.maintenanceAmount ||
           initialPost.amenities ||
@@ -234,6 +250,11 @@ export function CreatePostFlow({
           initialPost.parkingType),
     ),
   );
+  const [locationOpen, setLocationOpen] = useState(() =>
+    Boolean(initialPost?.locationLatitude && initialPost?.locationLongitude),
+  );
+  const [isLocating, setIsLocating] = useState(false);
+  const [locationStatus, setLocationStatus] = useState("");
   const originalImagePaths = useRef(
     (initialPost?.images ?? []).map((image) => image.path),
   );
@@ -268,6 +289,31 @@ export function CreatePostFlow({
   const returnPath =
     actionState.communityPath ??
     (currentLocation ? communityPath(currentLocation) : "/community");
+  const mapPreview = useMemo(() => {
+    const latitude = Number(values.locationLatitude);
+    const longitude = Number(values.locationLongitude);
+    if (
+      !values.locationLatitude.trim() ||
+      !values.locationLongitude.trim() ||
+      !Number.isFinite(latitude) ||
+      !Number.isFinite(longitude) ||
+      latitude < -90 ||
+      latitude > 90 ||
+      longitude < -180 ||
+      longitude > 180
+    ) {
+      return null;
+    }
+
+    return publicMapPoint(
+      { latitude, longitude },
+      values.locationPrecision === "Exact" ? "EXACT" : "APPROXIMATE",
+    );
+  }, [
+    values.locationLatitude,
+    values.locationLongitude,
+    values.locationPrecision,
+  ]);
 
   useEffect(() => {
     latestImages.current = images;
@@ -397,6 +443,7 @@ export function CreatePostFlow({
       postType: value,
       housingType: current.postType === value ? current.housingType : "",
       housingFeature: current.postType === value ? current.housingFeature : "",
+      occupancy: current.postType === value ? current.occupancy : "",
     }));
     setIgnoreServerErrors(true);
   };
@@ -409,6 +456,40 @@ export function CreatePostFlow({
     );
   };
 
+  const useCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationStatus("Location access is not available in this browser.");
+      return;
+    }
+
+    setIsLocating(true);
+    setLocationStatus("Finding your location…");
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        setValues((current) => ({
+          ...current,
+          locationLatitude: coords.latitude.toFixed(6),
+          locationLongitude: coords.longitude.toFixed(6),
+          locationPrecision: current.locationPrecision || "Approximate",
+        }));
+        setClientErrors((current) => ({
+          ...current,
+          locationLatitude: undefined,
+          locationLongitude: undefined,
+          locationPrecision: undefined,
+        }));
+        setIgnoreServerErrors(true);
+        setLocationStatus("Location added. Choose whether to share it approximately or exactly.");
+        setIsLocating(false);
+      },
+      () => {
+        setLocationStatus("We could not access your location. Enter the coordinates manually instead.");
+        setIsLocating(false);
+      },
+      { enableHighAccuracy: false, maximumAge: 300_000, timeout: 10_000 },
+    );
+  };
+
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const parsed = validateCommunityPost(values);
@@ -417,6 +498,9 @@ export function CreatePostFlow({
       setIgnoreServerErrors(true);
       if (listingDetailFields.some((field) => parsed.errors[field])) {
         setHomeDetailsOpen(true);
+      }
+      if (listingLocationFields.some((field) => parsed.errors[field])) {
+        setLocationOpen(true);
       }
       const firstInvalidField = Object.keys(parsed.errors)[0];
       requestAnimationFrame(() => document.getElementById(firstInvalidField)?.focus());
@@ -607,15 +691,87 @@ export function CreatePostFlow({
                   </button>
 
                   {homeDetailsOpen ? (
-                  <div id="listing-home-details" className="mt-5 grid gap-x-4 gap-y-5 border-t border-border/70 pt-5 sm:grid-cols-2">
-                    <SelectField id="furnishingStatus" label="Furnishing" optional value={values.furnishingStatus} onChange={(value) => updateField("furnishingStatus", value)} icon={Armchair} options={FURNISHING_OPTIONS.map((value) => ({ value, label: value }))} error={errors.furnishingStatus} placeholder="Not specified" />
-                    <SelectField id="preferredOccupant" label={postType === "PG Available" ? "Preferred tenant" : "Preferred tenant / flatmate"} optional value={values.preferredOccupant} onChange={(value) => updateField("preferredOccupant", value)} icon={UserRoundCheck} options={PREFERRED_OCCUPANT_OPTIONS.map((value) => ({ value, label: value }))} error={errors.preferredOccupant} placeholder="No preference" />
-                    <TextField id="securityDeposit" label="Security deposit" optional value={values.securityDeposit} onChange={(value) => updateField("securityDeposit", value)} icon={ShieldCheck} placeholder="e.g. 36000" error={errors.securityDeposit} type="number" min={0} />
-                    <TextField id="maintenanceAmount" label="Monthly maintenance" optional value={values.maintenanceAmount} onChange={(value) => updateField("maintenanceAmount", value)} icon={Wrench} placeholder="e.g. 2500" error={errors.maintenanceAmount} type="number" min={0} />
-                    <SelectField id="attachedBathroom" label="Attached bathroom" optional value={values.attachedBathroom} onChange={(value) => updateField("attachedBathroom", value)} icon={Bath} options={ATTACHED_BATHROOM_OPTIONS.map((value) => ({ value, label: value }))} error={errors.attachedBathroom} placeholder="Not specified" />
-                    <SelectField id="parkingType" label="Parking" optional value={values.parkingType} onChange={(value) => updateField("parkingType", value)} icon={Car} options={PARKING_OPTIONS.map((value) => ({ value, label: value }))} error={errors.parkingType} placeholder="Not specified" />
-                    <TextField id="amenities" label="Amenities" optional value={values.amenities} onChange={(value) => updateField("amenities", value)} icon={Sparkles} placeholder="Wi-Fi, power backup, washing machine" error={errors.amenities} help="Separate up to 8 amenities with commas." wide />
-                  </div>
+                    <div id="listing-home-details" className="mt-5 grid gap-x-4 gap-y-5 border-t border-border/70 pt-5 sm:grid-cols-2">
+                      <SelectField id="furnishingStatus" label="Furnishing" optional value={values.furnishingStatus} onChange={(value) => updateField("furnishingStatus", value)} icon={Armchair} options={FURNISHING_OPTIONS.map((value) => ({ value, label: value }))} error={errors.furnishingStatus} placeholder="Not specified" />
+                      {postType === "Room Available" ? (
+                        <SelectField id="occupancy" label="Occupancy" optional value={values.occupancy} onChange={(value) => updateField("occupancy", value)} icon={UsersRound} options={ROOM_OCCUPANCY_OPTIONS.map((value) => ({ value, label: value }))} error={errors.occupancy} placeholder="Not specified" />
+                      ) : null}
+                      <SelectField id="preferredOccupant" label={postType === "PG Available" ? "Preferred tenant" : "Preferred tenant / flatmate"} optional value={values.preferredOccupant} onChange={(value) => updateField("preferredOccupant", value)} icon={UserRoundCheck} options={PREFERRED_OCCUPANT_OPTIONS.map((value) => ({ value, label: value }))} error={errors.preferredOccupant} placeholder="No preference" />
+                      <TextField id="securityDeposit" label="Security deposit" optional value={values.securityDeposit} onChange={(value) => updateField("securityDeposit", value)} icon={ShieldCheck} placeholder="e.g. 36000" error={errors.securityDeposit} type="number" min={0} />
+                      <TextField id="maintenanceAmount" label="Monthly maintenance" optional value={values.maintenanceAmount} onChange={(value) => updateField("maintenanceAmount", value)} icon={Wrench} placeholder="e.g. 2500" error={errors.maintenanceAmount} type="number" min={0} />
+                      <SelectField id="attachedBathroom" label="Attached bathroom" optional value={values.attachedBathroom} onChange={(value) => updateField("attachedBathroom", value)} icon={Bath} options={ATTACHED_BATHROOM_OPTIONS.map((value) => ({ value, label: value }))} error={errors.attachedBathroom} placeholder="Not specified" />
+                      <SelectField id="parkingType" label="Parking" optional value={values.parkingType} onChange={(value) => updateField("parkingType", value)} icon={Car} options={PARKING_OPTIONS.map((value) => ({ value, label: value }))} error={errors.parkingType} placeholder="Not specified" />
+                      <TextField id="amenities" label="Amenities" optional value={values.amenities} onChange={(value) => updateField("amenities", value)} icon={Sparkles} placeholder="Wi-Fi, power backup, washing machine" error={errors.amenities} help="Separate up to 8 amenities with commas." wide />
+                    </div>
+                  ) : null}
+                </section>
+              ) : null}
+
+              {supportsListingImages(postType) ? (
+                <section className="rounded-2xl border border-border/80 bg-muted/25 p-4 sm:col-span-2 sm:p-5">
+                  <button
+                    type="button"
+                    aria-expanded={locationOpen}
+                    aria-controls="listing-property-location"
+                    onClick={() => setLocationOpen((open) => !open)}
+                    className="flex w-full items-center gap-3 rounded-xl text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/25"
+                  >
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-secondary-foreground">
+                      <MapPin aria-hidden="true" className="size-5" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-base font-semibold">Property location</span>
+                      <span className="mt-1 block text-sm leading-6 text-muted-foreground">
+                        Add a map pin alongside the selected locality.
+                      </span>
+                    </span>
+                    <span className="hidden rounded-full bg-background px-2.5 py-1 text-xs font-medium text-muted-foreground sm:inline-flex">
+                      Optional
+                    </span>
+                    <ChevronDown
+                      aria-hidden="true"
+                      className={cn(
+                        "size-5 shrink-0 text-muted-foreground transition-transform",
+                        locationOpen && "rotate-180",
+                      )}
+                    />
+                  </button>
+
+                  {locationOpen ? (
+                    <div id="listing-property-location" className="mt-5 border-t border-border/70 pt-5">
+                      <div className="grid gap-x-4 gap-y-5 sm:grid-cols-2">
+                        <TextField id="locationLatitude" label="Latitude" optional value={values.locationLatitude} onChange={(value) => updateField("locationLatitude", value)} icon={MapPin} placeholder="e.g. 17.4483" error={errors.locationLatitude} type="number" min={-90} max={90} step="any" />
+                        <TextField id="locationLongitude" label="Longitude" optional value={values.locationLongitude} onChange={(value) => updateField("locationLongitude", value)} icon={MapPin} placeholder="e.g. 78.3915" error={errors.locationLongitude} type="number" min={-180} max={180} step="any" />
+                        <SelectField id="locationPrecision" label="Location privacy" value={values.locationPrecision} onChange={(value) => updateField("locationPrecision", value)} icon={ShieldCheck} options={LOCATION_PRECISION_OPTIONS.map((value) => ({ value, label: value === "Approximate" ? "Approximate area (recommended)" : "Exact map pin" }))} error={errors.locationPrecision} wide />
+                      </div>
+
+                      <div className="mt-4 flex flex-col gap-3 rounded-xl border border-primary/15 bg-primary/[0.045] p-4 sm:flex-row sm:items-center sm:justify-between">
+                        <p className="text-sm leading-6 text-muted-foreground">
+                          Approximate locations are rounded to a nearby area before they are saved, so the exact coordinates are not retained.
+                        </p>
+                        <Button type="button" variant="outline" size="sm" onClick={useCurrentLocation} disabled={isLocating} className="shrink-0">
+                          {isLocating ? <LoaderCircle aria-hidden="true" className="size-4 animate-spin" /> : <LocateFixed aria-hidden="true" className="size-4" />}
+                          {isLocating ? "Locating…" : "Use Current Location"}
+                        </Button>
+                      </div>
+
+                      {locationStatus ? (
+                        <p role="status" className="mt-3 text-sm text-muted-foreground">{locationStatus}</p>
+                      ) : null}
+
+                      {mapPreview ? (
+                        <div className="mt-4 overflow-hidden rounded-xl border border-border/80 bg-muted">
+                          <PropertyMapFrame
+                            location={mapPreview}
+                            title="Property location preview"
+                            className="h-52 w-full sm:h-60"
+                          />
+                          <p className="border-t border-border/70 bg-background px-4 py-3 text-xs leading-5 text-muted-foreground">
+                            Preview shows the {mapPreview.precision === "APPROXIMATE" ? "rounded area that will be shared" : "exact pin you chose to share"}.
+                          </p>
+                        </div>
+                      ) : null}
+                    </div>
                   ) : null}
                 </section>
               ) : null}
@@ -664,12 +820,12 @@ function FormAlert({ title, message }: { title: string; message: string }) {
 
 type FieldIcon = typeof MapPin;
 
-function TextField({ id, label, optional, value, onChange, icon: Icon, placeholder, error, help, maxLength, min, type = "text", wide }: { id: CommunityPostFormField; label: string; optional?: boolean; value: string; onChange: (value: string) => void; icon: FieldIcon; placeholder?: string; error?: string; help?: string; maxLength?: number; min?: number; type?: string; wide?: boolean }) {
+function TextField({ id, label, optional, value, onChange, icon: Icon, placeholder, error, help, maxLength, min, max, step, type = "text", wide }: { id: CommunityPostFormField; label: string; optional?: boolean; value: string; onChange: (value: string) => void; icon: FieldIcon; placeholder?: string; error?: string; help?: string; maxLength?: number; min?: number; max?: number; step?: string; type?: string; wide?: boolean }) {
   const errorId = `${id}-error`;
   return (
     <div className={cn("space-y-2", wide && "sm:col-span-2")}>
       <label htmlFor={id} className={labelClassName}>{label} {optional ? <span className="font-normal text-muted-foreground">(optional)</span> : <span className="text-primary">*</span>}</label>
-      <div className="relative"><Icon aria-hidden="true" className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><input id={id} type={type} min={min ?? (type === "number" ? 1 : undefined)} inputMode={type === "number" ? "numeric" : undefined} maxLength={maxLength} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} aria-invalid={Boolean(error)} aria-describedby={error ? errorId : help ? `${id}-help` : undefined} className={cn(inputClassName, "pl-10")} /></div>
+      <div className="relative"><Icon aria-hidden="true" className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><input id={id} type={type} min={min ?? (type === "number" ? 1 : undefined)} max={max} step={step} inputMode={type === "number" ? "decimal" : undefined} maxLength={maxLength} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} aria-invalid={Boolean(error)} aria-describedby={error ? errorId : help ? `${id}-help` : undefined} className={cn(inputClassName, "pl-10")} /></div>
       {help ? <p id={`${id}-help`} className="text-xs text-muted-foreground">{help}</p> : null}
       <FieldError id={errorId} message={error} />
     </div>

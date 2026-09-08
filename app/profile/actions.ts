@@ -7,6 +7,7 @@ import {
   parseBudget,
   profilePreferencesToDatabase,
 } from "@/lib/profile-data";
+import { validateCommutePreference } from "@/lib/commute";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { ProfileUpdateResult, UserProfile } from "@/types/profile";
 
@@ -31,6 +32,7 @@ export async function updateProfileAction(
     typeof input.budget !== "string" ||
     typeof input.moveInDate !== "string" ||
     typeof input.bio !== "string" ||
+    !input.commute ||
     !Array.isArray(input.preferredLocalities) ||
     input.preferredLocalities.some(
       (locality) => typeof locality !== "string",
@@ -61,6 +63,11 @@ export async function updateProfileAction(
   const budget = parseBudget(input.budget);
   if (!budget) {
     return failure("Enter a valid budget, for example ₹18,000–₹25,000.");
+  }
+
+  const commute = validateCommutePreference(input.commute);
+  if (!commute.success) {
+    return failure(commute.message);
   }
 
   const supabase = await createSupabaseServerClient();
@@ -126,6 +133,10 @@ export async function updateProfileAction(
       budgetMin: budget.minimum,
       budgetMax: budget.maximum,
       preferredMoveInDate: input.moveInDate || null,
+      commuteDestination: commute.data.destination || null,
+      commuteLatitude: commute.data.latitude,
+      commuteLongitude: commute.data.longitude,
+      preferredCommuteKm: commute.data.preferredRangeKm,
       ...profilePreferencesToDatabase(input.preferences),
       updatedAt,
     })

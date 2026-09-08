@@ -10,10 +10,12 @@ import {
   Clock3,
   Edit3,
   IndianRupee,
+  LocateFixed,
   LoaderCircle,
   MapPin,
   MoonStar,
   PawPrint,
+  Route,
   Save,
   Sparkles,
   UserRound,
@@ -23,6 +25,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { TrustBadges } from "@/components/verification/trust-badges";
 import { updateProfileAction } from "@/app/profile/actions";
 import { cn } from "@/lib/utils";
 import type {
@@ -32,10 +35,16 @@ import type {
 
 type ProfileDraft = Omit<
   UserProfile,
-  "age" | "preferredLocalities"
+  "age" | "preferredLocalities" | "commute"
 > & {
   age: string;
   preferredLocalities: string;
+  commute: {
+    destination: string;
+    latitude: string;
+    longitude: string;
+    preferredRangeKm: string;
+  };
 };
 
 const inputClassName =
@@ -104,6 +113,19 @@ function createDraft(profile: UserProfile): ProfileDraft {
     ...profile,
     age: profile.age ? String(profile.age) : "",
     preferredLocalities: profile.preferredLocalities.join(", "),
+    commute: {
+      destination: profile.commute.destination,
+      latitude:
+        profile.commute.latitude === null ? "" : String(profile.commute.latitude),
+      longitude:
+        profile.commute.longitude === null
+          ? ""
+          : String(profile.commute.longitude),
+      preferredRangeKm:
+        profile.commute.preferredRangeKm === null
+          ? ""
+          : String(profile.commute.preferredRangeKm),
+    },
   };
 }
 
@@ -148,6 +170,8 @@ export function ProfilePage({
     message: string;
   } | null>(null);
   const [isSaving, startSaving] = useTransition();
+  const [isLocating, setIsLocating] = useState(false);
+  const [locationStatus, setLocationStatus] = useState("");
 
   const startEditing = () => {
     setDraft(createDraft(profile));
@@ -178,6 +202,47 @@ export function ProfilePage({
     }));
   };
 
+  const updateCommute = (
+    field: keyof ProfileDraft["commute"],
+    value: string,
+  ) => {
+    setDraft((current) => ({
+      ...current,
+      commute: { ...current.commute, [field]: value },
+    }));
+  };
+
+  const useCurrentDestination = () => {
+    if (!navigator.geolocation) {
+      setLocationStatus("Location access is unavailable in this browser.");
+      return;
+    }
+
+    setIsLocating(true);
+    setLocationStatus("Finding your destination pin…");
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        setDraft((current) => ({
+          ...current,
+          commute: {
+            ...current.commute,
+            latitude: coords.latitude.toFixed(6),
+            longitude: coords.longitude.toFixed(6),
+          },
+        }));
+        setLocationStatus("Destination pin added. Give it a recognizable name.");
+        setIsLocating(false);
+      },
+      () => {
+        setLocationStatus(
+          "We could not access your location. Enter the coordinates manually.",
+        );
+        setIsLocating(false);
+      },
+      { enableHighAccuracy: false, maximumAge: 300_000, timeout: 10_000 },
+    );
+  };
+
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -190,6 +255,18 @@ export function ProfilePage({
       ...draft,
       age: Number(draft.age),
       preferredLocalities,
+      commute: {
+        destination: draft.commute.destination,
+        latitude: draft.commute.latitude
+          ? Number(draft.commute.latitude)
+          : null,
+        longitude: draft.commute.longitude
+          ? Number(draft.commute.longitude)
+          : null,
+        preferredRangeKm: draft.commute.preferredRangeKm
+          ? Number(draft.commute.preferredRangeKm)
+          : null,
+      },
     };
 
     startSaving(async () => {
@@ -400,6 +477,108 @@ export function ProfilePage({
                   />
                 </div>
               </div>
+
+              <div className="rounded-2xl border border-border/80 bg-muted/30 p-4 sm:col-span-2 sm:p-5">
+                <div className="flex items-start gap-3">
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-secondary-foreground">
+                    <Route aria-hidden="true" className="size-5" />
+                  </span>
+                  <div>
+                    <h3 className="font-semibold">Commute destination</h3>
+                    <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                      Add a workplace, college, or important destination to compare listing distances.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-5 grid gap-x-4 gap-y-5 sm:grid-cols-2">
+                  <div className="space-y-2 sm:col-span-2">
+                    <label htmlFor="profile-commute-destination" className={labelClassName}>
+                      Destination name <span className="font-normal text-muted-foreground">(optional)</span>
+                    </label>
+                    <input
+                      id="profile-commute-destination"
+                      maxLength={120}
+                      value={draft.commute.destination}
+                      onChange={(event) => updateCommute("destination", event.target.value)}
+                      placeholder="e.g. Manyata Tech Park or IIT Delhi"
+                      className={inputClassName}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="profile-commute-latitude" className={labelClassName}>Latitude</label>
+                    <input
+                      id="profile-commute-latitude"
+                      type="number"
+                      min="-90"
+                      max="90"
+                      step="any"
+                      inputMode="decimal"
+                      value={draft.commute.latitude}
+                      onChange={(event) => updateCommute("latitude", event.target.value)}
+                      placeholder="e.g. 13.0358"
+                      className={inputClassName}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="profile-commute-longitude" className={labelClassName}>Longitude</label>
+                    <input
+                      id="profile-commute-longitude"
+                      type="number"
+                      min="-180"
+                      max="180"
+                      step="any"
+                      inputMode="decimal"
+                      value={draft.commute.longitude}
+                      onChange={(event) => updateCommute("longitude", event.target.value)}
+                      placeholder="e.g. 77.6203"
+                      className={inputClassName}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="profile-commute-range" className={labelClassName}>
+                      Preferred maximum commute
+                    </label>
+                    <div className="relative">
+                      <Route aria-hidden="true" className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                      <input
+                        id="profile-commute-range"
+                        type="number"
+                        min="1"
+                        max="100"
+                        step="1"
+                        inputMode="numeric"
+                        value={draft.commute.preferredRangeKm}
+                        onChange={(event) => updateCommute("preferredRangeKm", event.target.value)}
+                        placeholder="e.g. 10 km"
+                        className={cn(inputClassName, "pl-10")}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-end">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={useCurrentDestination}
+                      disabled={isLocating}
+                      className="w-full"
+                    >
+                      {isLocating ? (
+                        <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
+                      ) : (
+                        <LocateFixed aria-hidden="true" className="size-4" />
+                      )}
+                      {isLocating ? "Locating…" : "Use Current Location"}
+                    </Button>
+                  </div>
+                </div>
+                {locationStatus ? (
+                  <p role="status" className="mt-3 text-sm text-muted-foreground">{locationStatus}</p>
+                ) : null}
+                <p className="mt-3 text-xs leading-5 text-muted-foreground">
+                  Your destination coordinates stay private and are used only to calculate approximate distances for you.
+                </p>
+              </div>
             </div>
           </section>
 
@@ -525,6 +704,11 @@ export function ProfilePage({
                   Profile preview
                 </span>
               </div>
+              <TrustBadges
+                verification={profile.verification}
+                showDisclaimer
+                className="mt-3"
+              />
               <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-base text-muted-foreground">
                 <span className="font-medium text-foreground">
                   {profile.profession || "Add your profession"}
@@ -638,6 +822,28 @@ export function ProfilePage({
           </div>
         </section>
       </div>
+
+      <section className="surface-card mt-6 p-5 sm:p-6">
+        <div className="flex items-start gap-3">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-secondary-foreground">
+            <Route aria-hidden="true" className="size-5" />
+          </span>
+          <div>
+            <h2 className="text-lg font-semibold">Commute preference</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {profile.commute.destination || "No destination added yet."}
+            </p>
+            {profile.commute.preferredRangeKm ? (
+              <p className="mt-2 text-sm font-semibold text-foreground">
+                Prefer listings within {profile.commute.preferredRangeKm} km
+              </p>
+            ) : null}
+          </div>
+        </div>
+        <p className="mt-4 text-xs leading-5 text-muted-foreground">
+          The destination pin is private. Other members can only see your preferred commute range.
+        </p>
+      </section>
 
       <section className="surface-card mt-6 p-5 sm:p-7">
         <div className="flex items-start gap-3">

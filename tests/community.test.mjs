@@ -30,6 +30,7 @@ new Function("module", "exports", "require", compiled)(
 
 const {
   communityPath,
+  formatListingOccupancy,
   formatCommunityAmount,
   validateCommunityPost,
 } = communityModule.exports;
@@ -43,6 +44,7 @@ const validPost = {
   genderPreference: "Any gender",
   housingType: "2BHK",
   housingFeature: "Private room",
+  occupancy: "Single occupancy",
   furnishingStatus: "Semi-furnished",
   securityDeposit: "36000",
   maintenanceAmount: "2500",
@@ -63,6 +65,7 @@ test("room listings produce structured database fields and useful tags", () => {
   assert.equal(result.data.propertyType, "APARTMENT");
   assert.equal(result.data.roomType, "PRIVATE_ROOM");
   assert.equal(result.data.bedrooms, 2);
+  assert.equal(result.data.availableSpots, 1);
   assert.equal(result.data.furnishingStatus, "SEMI_FURNISHED");
   assert.equal(result.data.securityDeposit, 36000);
   assert.equal(result.data.maintenanceAmount, 2500);
@@ -94,6 +97,7 @@ test("need-a-room posts store a maximum budget", () => {
   assert.equal(result.data.preferredOccupant, null);
   assert.equal(result.data.attachedBathroom, null);
   assert.equal(result.data.parkingType, null);
+  assert.equal(result.data.availableSpots, null);
   assert.deepEqual(result.data.amenities, []);
 });
 
@@ -120,18 +124,34 @@ test("PG listings map occupancy and optional home details", () => {
   assert.equal(result.data.parkingType, "NONE");
 });
 
+test("listing detail occupancy labels stay distinct from room type", () => {
+  assert.equal(formatListingOccupancy("Room Available", 1), "Single occupancy");
+  assert.equal(formatListingOccupancy("Room Available", 2), "Double sharing");
+  assert.equal(formatListingOccupancy("PG Available", 2), "Twin sharing");
+  assert.equal(formatListingOccupancy("Room Available", null), null);
+});
+
 test("invalid listing costs and excessive amenities are rejected", () => {
   const result = validateCommunityPost({
     ...validPost,
     securityDeposit: "-1",
     maintenanceAmount: "12.5",
     amenities: "one, two, three, four, five, six, seven, eight, nine",
+    occupancy: "Five sharing",
   });
 
   assert.equal(result.success, false);
   assert.equal(Boolean(result.errors.securityDeposit), true);
   assert.equal(Boolean(result.errors.maintenanceAmount), true);
   assert.equal(Boolean(result.errors.amenities), true);
+  assert.equal(Boolean(result.errors.occupancy), true);
+});
+
+test("listing dates use an availability-specific validation message", () => {
+  const result = validateCommunityPost({ ...validPost, moveInDate: "" });
+
+  assert.equal(result.success, false);
+  assert.match(result.errors.moveInDate, /availability date/);
 });
 
 test("invalid and excessive user tags are rejected", () => {

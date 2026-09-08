@@ -1,12 +1,17 @@
 import type { CompatibilityResult } from "@/types/compatibility";
 import type { CommunityPostCategory } from "@/types/community";
+import type { RecommendationResult } from "@/types/recommendation";
+import type { ResponsivenessIndicator } from "@/types/responsiveness";
+import type { VerificationSummary } from "@/types/verification";
+import type { InterestStage } from "@/types/activity";
+import type { TrustScore } from "@/types/trust";
 
 export type SearchParamRecord = Record<
   string,
   string | string[] | undefined
 >;
 
-export type CommunityPostSort = "newest" | "lowest-amount";
+export type CommunityPostSort = "recommended" | "newest" | "lowest-amount";
 
 export type CommunityPostFilters = {
   query: string;
@@ -15,10 +20,15 @@ export type CommunityPostFilters = {
   budgetMax: number | null;
   moveInBy: string;
   genderPreference: "ANY" | "WOMEN" | "MEN" | null;
+  maximumDistanceKm: number | null;
   sort: CommunityPostSort;
 };
 
-export type PeopleSort = "highest-compatibility" | "lowest-budget" | "newest";
+export type PeopleSort =
+  | "recommended"
+  | "highest-compatibility"
+  | "lowest-budget"
+  | "newest";
 
 export type PeopleFilters = {
   query: string;
@@ -40,6 +50,7 @@ export type PeopleFilters = {
     | "OTHER"
     | null;
   minimumCompatibility: number | null;
+  preferredCommuteKm: number | null;
   sort: PeopleSort;
 };
 
@@ -56,7 +67,15 @@ export type PeopleDiscoveryProfile = {
   moveInLabel: string;
   preferredLocalities: string[];
   lifestyleTags: string[];
+  occupationStatus: string | null;
   compatibility: CompatibilityResult | null;
+  preferredCommuteLabel: string | null;
+  responsiveness: ResponsivenessIndicator;
+  verification: VerificationSummary;
+  trust: TrustScore;
+  recommendation: RecommendationResult | null;
+  isShortlisted: boolean;
+  activityStage: InterestStage | null;
 };
 
 export type CommunityPostTypeOption = {

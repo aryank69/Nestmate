@@ -1,16 +1,21 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   Bell,
+  AlarmClock,
   Check,
   CheckCheck,
   CircleAlert,
   LoaderCircle,
+  LifeBuoy,
   MessageCircle,
   MessagesSquare,
+  ReceiptIndianRupee,
   Sparkles,
+  ShieldCheck,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -34,14 +39,20 @@ const notificationIcons: Record<NotificationType, typeof Bell> = {
   COMMUNITY_MENTION: MessagesSquare,
   COMMUNITY_REPLY: MessagesSquare,
   POST_ACTIVITY: Sparkles,
+  MODERATION_WARNING: ShieldCheck,
+  SUPPORT_CASE_UPDATE: LifeBuoy,
+  HOUSEHOLD_BILL: ReceiptIndianRupee,
+  HOUSEHOLD_BUDGET: CircleAlert,
 };
 
 export function NotificationsPanel({
   initialNotifications,
   initialError,
+  initialReminderCount = 0,
 }: {
   initialNotifications: NestMateNotification[];
   initialError: string;
+  initialReminderCount?: number;
 }) {
   const router = useRouter();
   const [supabase] = useState(() => createSupabaseBrowserClient());
@@ -180,6 +191,26 @@ export function NotificationsPanel({
           {isMarkingAll ? "Updating..." : "Mark all as read"}
         </Button>
       </div>
+
+      {initialReminderCount ? (
+        <Link
+          href="/reminders"
+          className="mt-5 flex items-center gap-3 rounded-2xl border border-primary/15 bg-primary/[0.055] px-4 py-3.5 transition-colors hover:bg-primary/[0.085]"
+        >
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <AlarmClock aria-hidden="true" className="size-4.5" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold">
+              {initialReminderCount} reminder{initialReminderCount === 1 ? "" : "s"} need attention
+            </span>
+            <span className="mt-0.5 block text-xs text-muted-foreground">
+              Visits, follow-ups, shortlists, and move-in dates
+            </span>
+          </span>
+          <span className="text-sm font-semibold text-primary">View</span>
+        </Link>
+      ) : null}
 
       {error ? (
         <div role="alert" className="mt-5 flex items-center justify-between gap-3 rounded-xl border border-destructive/25 bg-destructive/8 px-4 py-3 text-sm font-medium text-destructive">

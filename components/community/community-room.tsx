@@ -14,6 +14,7 @@ import {
   MapPin,
   MessageCircle,
   PencilLine,
+  Route,
   Search,
   SearchX,
   SlidersHorizontal,
@@ -31,6 +32,7 @@ import {
   communityFilterQuery,
 } from "@/lib/discovery";
 import { cn } from "@/lib/utils";
+import { rankListingRecommendations } from "@/lib/recommendations";
 import type {
   CommunityLocationOption,
   CommunityPost,
@@ -111,6 +113,15 @@ export function CommunityRoom({
   const allPostCount = Object.values(postTypeCounts).reduce(
     (total, count) => total + count,
     0,
+  );
+  const displayedPosts = useMemo(
+    () =>
+      rankListingRecommendations(
+        posts,
+        viewerProfile,
+        filters.sort === "recommended",
+      ),
+    [filters.sort, posts, viewerProfile],
   );
 
   const changeDestinationCity = (city: string) => {
@@ -356,6 +367,7 @@ export function CommunityRoom({
                     defaultValue={filters.sort}
                     className="h-11 w-full appearance-none rounded-xl border border-input bg-background px-3 pr-9 text-sm font-semibold outline-none focus:border-primary focus:ring-3 focus:ring-ring/15"
                   >
+                    <option value="recommended">Highest Living Fit</option>
                     <option value="newest">Newest first</option>
                     <option value="lowest-amount">Lowest amount</option>
                   </select>
@@ -411,7 +423,35 @@ export function CommunityRoom({
                       <ChevronDown aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                     </span>
                   </label>
+                  <label className="relative space-y-1.5 text-xs font-semibold text-muted-foreground">
+                    Maximum distance
+                    <span className="relative block">
+                      <Route aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                      <select
+                        name="distance"
+                        defaultValue={filters.maximumDistanceKm?.toString() ?? ""}
+                        disabled={!viewerProfile?.commute.destination}
+                        className="h-11 w-full appearance-none rounded-xl border border-input bg-background pl-9 pr-9 text-sm font-medium text-foreground outline-none disabled:cursor-not-allowed disabled:opacity-55 focus:border-primary focus:ring-3 focus:ring-ring/15"
+                      >
+                        <option value="">Any distance</option>
+                        <option value="3">Within 3 km</option>
+                        <option value="5">Within 5 km</option>
+                        <option value="10">Within 10 km</option>
+                        <option value="15">Within 15 km</option>
+                        <option value="25">Within 25 km</option>
+                      </select>
+                      <ChevronDown aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                    </span>
+                  </label>
                 </div>
+                {!viewerProfile?.commute.destination ? (
+                  <p className="mt-3 text-xs leading-5 text-muted-foreground">
+                    <Link href="/profile" className="font-semibold text-primary hover:underline">
+                      Add a private commute destination
+                    </Link>{" "}
+                    to filter listings by approximate distance.
+                  </p>
+                ) : null}
               </details>
 
               <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
@@ -435,16 +475,20 @@ export function CommunityRoom({
 
           <div className="mb-5">
             <h2 className="text-xl font-semibold">
-              {filters.sort === "lowest-amount" ? "Best-priced posts" : "Latest posts"}
+              {filters.sort === "recommended"
+                ? "Highest Living Fit"
+                : filters.sort === "lowest-amount"
+                  ? "Best-priced posts"
+                  : "Latest posts"}
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              {posts.length} {posts.length === 1 ? "match" : "matches"} in {community.locality}
+              {displayedPosts.length} {displayedPosts.length === 1 ? "match" : "matches"} in {community.locality}
             </p>
           </div>
 
           <div id="locality-community-feed" role="tabpanel" className="space-y-5">
-            {posts.length ? (
-              posts.map((post) => (
+            {displayedPosts.length ? (
+              displayedPosts.map((post) => (
                 <CommunityPostCard
                   key={post.id}
                   post={post}

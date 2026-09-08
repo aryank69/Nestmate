@@ -1,3 +1,7 @@
+import type { CommutePreference } from "@/types/commute";
+import type { VisitOutcomeHistoryItem } from "@/types/visit";
+import type { VerificationSummary } from "@/types/verification";
+
 export type LifestylePreferences = {
   diet: string;
   smoking: string;
@@ -17,7 +21,10 @@ export type UserProfile = {
   budget: string;
   moveInDate: string;
   bio: string;
+  commute: CommutePreference;
   preferences: LifestylePreferences;
+  visitOutcomeHistory?: VisitOutcomeHistoryItem[];
+  verification: VerificationSummary;
 };
 
 export type ProfileUpdateResult = {

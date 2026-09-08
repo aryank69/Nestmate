@@ -8,8 +8,13 @@ import {
   LISTING_IMAGE_BUCKET,
   MAX_LISTING_IMAGES,
 } from "@/lib/listing-images";
+import { parseListingAvailabilityStatus } from "@/lib/listing-freshness";
 import { prisma } from "@/lib/prisma";
 import { ensureUserProfile } from "@/lib/profile-data";
+import {
+  getSafetyRestrictionMessage,
+  isSafetyRestrictionError,
+} from "@/lib/spam-safeguards";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type {
   CommunityJoinActionState,
@@ -158,6 +163,7 @@ export async function saveCommunityPostAction(
       where: {
         id: postId,
         status: "ACTIVE",
+        moderationStatus: "VISIBLE",
         author: { authUserId: context.claims.sub },
       },
       select: {
@@ -216,6 +222,8 @@ export async function saveCommunityPostAction(
       id,
       ...postValues,
       authorId: context.user.id,
+      availabilityStatus: "AVAILABLE",
+      lastConfirmedAt: now,
       createdAt: now,
       publishedAt: now,
     })
@@ -224,6 +232,9 @@ export async function saveCommunityPostAction(
 
   if (error || !data) {
     console.error("Community post creation failed", error?.message);
+    if (isSafetyRestrictionError(error)) {
+      return failure(getSafetyRestrictionMessage("post"));
+    }
     return failure("We could not publish your post. Please try again.");
   }
 
@@ -233,6 +244,84 @@ export async function saveCommunityPostAction(
     success: true,
     message: "Your post is live in the community.",
     postId: data.id,
+    communityPath: roomPath,
+  };
+}
+
+export async function updatePostAvailabilityAction(
+  postId: string,
+  availabilityStatusValue: string,
+): Promise<CommunityPostActionState> {
+  const availabilityStatus = parseListingAvailabilityStatus(
+    availabilityStatusValue,
+  );
+  if (!postId || postId.length > 128 || !availabilityStatus) {
+    return failure("Choose a valid listing status.");
+  }
+
+  const context = await authenticatedPostContext();
+  if (!context) {
+    return failure("Your session has expired. Please log in again.");
+  }
+
+  const ownedPost = await prisma.post.findFirst({
+    where: {
+      id: postId,
+      status: "ACTIVE",
+      moderationStatus: "VISIBLE",
+      author: { authUserId: context.claims.sub },
+    },
+    select: {
+      id: true,
+      community: {
+        select: {
+          locality: {
+            select: {
+              slug: true,
+              city: { select: { slug: true } },
+            },
+          },
+        },
+      },
+    },
+  });
+  if (!ownedPost) {
+    return failure("This post was not found or you do not own it.");
+  }
+
+  const now = new Date().toISOString();
+  const { data, error } = await context.supabase
+    .from("Post")
+    .update({ availabilityStatus, lastConfirmedAt: now, updatedAt: now })
+    .eq("id", postId)
+    .eq("authorId", context.user.id)
+    .select("id")
+    .maybeSingle();
+
+  if (error || !data) {
+    console.error("Listing availability update failed", error?.message);
+    return failure("We could not update the listing status. Please try again.");
+  }
+
+  const roomPath = communityPath({
+    citySlug: ownedPost.community.locality.city.slug,
+    localitySlug: ownedPost.community.locality.slug,
+  });
+  revalidatePath("/community");
+  revalidatePath(roomPath);
+  revalidatePath(`/community/post/${postId}`);
+  revalidatePath("/saved");
+  revalidatePath("/recently-viewed");
+
+  return {
+    success: true,
+    message:
+      availabilityStatus === "CLOSED"
+        ? "Listing closed. It is hidden from discovery."
+        : availabilityStatus === "RESERVED"
+          ? "Listing marked as reserved."
+          : "Listing confirmed as available.",
+    postId,
     communityPath: roomPath,
   };
 }
@@ -261,6 +350,7 @@ export async function updateCommunityPostImagesAction(
     where: {
       id: postId,
       status: "ACTIVE",
+      moderationStatus: "VISIBLE",
       author: { authUserId: context.claims.sub },
     },
     select: {
@@ -341,7 +431,11 @@ export async function deleteCommunityPostAction(
   }
 
   const ownedPost = await prisma.post.findFirst({
-    where: { id: postId, author: { authUserId: context.claims.sub } },
+    where: {
+      id: postId,
+      moderationStatus: "VISIBLE",
+      author: { authUserId: context.claims.sub },
+    },
     select: {
       id: true,
       imagePaths: true,

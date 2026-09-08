@@ -9,6 +9,10 @@ export const notificationTypeLabels: Record<NotificationType, string> = {
   COMMUNITY_MENTION: "Community mention",
   COMMUNITY_REPLY: "Community reply",
   POST_ACTIVITY: "Post activity",
+  MODERATION_WARNING: "Safety notice",
+  SUPPORT_CASE_UPDATE: "Support update",
+  HOUSEHOLD_BILL: "Household bill",
+  HOUSEHOLD_BUDGET: "Household budget",
 };
 
 export function normalizeNotification(

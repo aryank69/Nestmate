@@ -69,8 +69,13 @@ export async function loadSavedData(userId: string) {
           where: {
             id: { in: postIds },
             status: "ACTIVE",
+            moderationStatus: "VISIBLE",
+            availabilityStatus: { in: ["AVAILABLE", "RESERVED"] },
             publishedAt: { not: null },
-            author: { blocksReceived: { none: { blockerId: userId } } },
+            author: {
+              blocksReceived: { none: { blockerId: userId } },
+              moderationState: { isNot: { status: "SUSPENDED" } },
+            },
           },
           select: {
             id: true,
@@ -121,6 +126,9 @@ export async function loadSavedData(userId: string) {
       moveInLabel: post.moveInDate ? formatDate(post.moveInDate) : "Flexible",
       authorName: post.author.name,
       communityHref: `/community/${encodeURIComponent(post.community.locality.city.slug)}/${encodeURIComponent(post.community.locality.slug)}`,
+      detailHref: `/community/post/${encodeURIComponent(post.id)}`,
+      comparisonEligible:
+        category === "Room Available" || category === "PG Available",
       savedAt: formatDate(saved.createdAt),
     }];
   });

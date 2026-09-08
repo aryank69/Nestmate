@@ -59,6 +59,14 @@ export const PARKING_OPTIONS = [
 
 export const ATTACHED_BATHROOM_OPTIONS = ["Yes", "No"] as const;
 
+export const ROOM_OCCUPANCY_OPTIONS = [
+  "Single occupancy",
+  "Double sharing",
+  "Triple sharing",
+] as const;
+
+export const LOCATION_PRECISION_OPTIONS = ["Approximate", "Exact"] as const;
+
 export const HOUSING_OPTIONS: Record<
   CommunityPostCategory,
   { housingTypes: string[]; housingFeatures: string[] }
@@ -118,6 +126,9 @@ type ValidatedPostValues = {
     | null;
   attachedBathroom: boolean | null;
   parkingType: "NONE" | "TWO_WHEELER" | "CAR" | "BOTH" | null;
+  latitude: number | null;
+  longitude: number | null;
+  locationPrecision: "EXACT" | "APPROXIMATE" | null;
   bedrooms: number | null;
   availableSpots: number | null;
   mealsIncluded: boolean | null;
@@ -164,6 +175,12 @@ export function validateCommunityPost(
   );
   const isListing =
     category === "Room Available" || category === "PG Available";
+  const latitudeInput = input.locationLatitude?.trim() ?? "";
+  const longitudeInput = input.locationLongitude?.trim() ?? "";
+  const hasAnyCoordinate = Boolean(latitudeInput || longitudeInput);
+  let latitude: number | null = null;
+  let longitude: number | null = null;
+  let locationPrecision: ValidatedPostValues["locationPrecision"] = null;
 
   const optionalAmount = (
     field: "securityDeposit" | "maintenanceAmount",
@@ -199,7 +216,9 @@ export function validateCommunityPost(
     errors.amount = "Enter a valid monthly amount.";
   }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.moveInDate)) {
-    errors.moveInDate = "Choose a valid move-in date.";
+    errors.moveInDate = isListing
+      ? "Choose a valid availability date."
+      : "Choose a valid move-in date.";
   }
   if (!(input.genderPreference in genderToDatabase)) {
     errors.genderPreference = "Choose a gender preference.";
@@ -236,6 +255,15 @@ export function validateCommunityPost(
     errors.furnishingStatus = "Choose a valid furnishing option.";
   }
   if (
+    category === "Room Available" &&
+    input.occupancy &&
+    !ROOM_OCCUPANCY_OPTIONS.includes(
+      input.occupancy as (typeof ROOM_OCCUPANCY_OPTIONS)[number],
+    )
+  ) {
+    errors.occupancy = "Choose a valid occupancy option.";
+  }
+  if (
     isListing &&
     input.preferredOccupant &&
     !PREFERRED_OCCUPANT_OPTIONS.includes(
@@ -261,6 +289,48 @@ export function validateCommunityPost(
     )
   ) {
     errors.parkingType = "Choose a valid parking option.";
+  }
+  if (isListing && hasAnyCoordinate) {
+    const parsedLatitude = Number(latitudeInput);
+    const parsedLongitude = Number(longitudeInput);
+
+    if (
+      !latitudeInput ||
+      !Number.isFinite(parsedLatitude) ||
+      parsedLatitude < -90 ||
+      parsedLatitude > 90
+    ) {
+      errors.locationLatitude = "Enter a latitude between -90 and 90.";
+    }
+    if (
+      !longitudeInput ||
+      !Number.isFinite(parsedLongitude) ||
+      parsedLongitude < -180 ||
+      parsedLongitude > 180
+    ) {
+      errors.locationLongitude = "Enter a longitude between -180 and 180.";
+    }
+    if (
+      !LOCATION_PRECISION_OPTIONS.includes(
+        input.locationPrecision as (typeof LOCATION_PRECISION_OPTIONS)[number],
+      )
+    ) {
+      errors.locationPrecision = "Choose how precisely to share this location.";
+    }
+
+    if (
+      !errors.locationLatitude &&
+      !errors.locationLongitude &&
+      !errors.locationPrecision
+    ) {
+      locationPrecision =
+        input.locationPrecision === "Exact" ? "EXACT" : "APPROXIMATE";
+      const decimals = locationPrecision === "APPROXIMATE" ? 2 : 6;
+      const factor = 10 ** decimals;
+      latitude = Math.round((parsedLatitude + Number.EPSILON) * factor) / factor;
+      longitude =
+        Math.round((parsedLongitude + Number.EPSILON) * factor) / factor;
+    }
   }
 
   if (Object.keys(errors).length || !options) {
@@ -318,6 +388,16 @@ export function validateCommunityPost(
       : Number(input.housingType[0]);
     roomType =
       input.housingFeature === "Shared room" ? "SHARED_ROOM" : "PRIVATE_ROOM";
+    availableSpots =
+      category === "Room Available"
+        ? input.occupancy === "Single occupancy"
+          ? 1
+          : input.occupancy === "Double sharing"
+            ? 2
+            : input.occupancy === "Triple sharing"
+              ? 3
+              : null
+        : null;
   }
 
   if (isListing) {
@@ -389,6 +469,9 @@ export function validateCommunityPost(
             : null
         : null,
       parkingType,
+      latitude: isListing ? latitude : null,
+      longitude: isListing ? longitude : null,
+      locationPrecision: isListing ? locationPrecision : null,
       bedrooms,
       availableSpots,
       mealsIncluded,
@@ -406,6 +489,24 @@ export function communityInitials(name: string) {
     .map((part) => part[0])
     .join("")
     .toUpperCase();
+}
+
+export function formatListingOccupancy(
+  category: CommunityPostCategory,
+  availableSpots: number | null,
+) {
+  if (category === "PG Available") {
+    if (availableSpots === 1) return "Single occupancy";
+    if (availableSpots === 2) return "Twin sharing";
+    if (availableSpots === 3) return "Triple sharing";
+    return availableSpots ? `${availableSpots} sharing` : "Multiple options";
+  }
+  if (category === "Room Available") {
+    if (availableSpots === 1) return "Single occupancy";
+    if (availableSpots === 2) return "Double sharing";
+    if (availableSpots === 3) return "Triple sharing";
+  }
+  return null;
 }
 
 export function formatCommunityAmount(

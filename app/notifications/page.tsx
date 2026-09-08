@@ -4,6 +4,7 @@ import { Navbar } from "@/components/navbar";
 import { NotificationsPanel } from "@/components/notifications/notifications-panel";
 import { normalizeNotification } from "@/lib/notifications";
 import { ensureUserProfile } from "@/lib/profile-data";
+import { loadReminderData } from "@/lib/reminder-data";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { NotificationRow } from "@/types/notification";
 
@@ -17,7 +18,7 @@ export default async function NotificationsPage() {
   }
 
   const metadata = claims.user_metadata;
-  await ensureUserProfile({
+  const user = await ensureUserProfile({
     id: claims.sub,
     email: typeof claims.email === "string" ? claims.email : null,
     name:
@@ -31,6 +32,7 @@ export default async function NotificationsPage() {
     .select("id,type,title,body,href,resourceId,readAt,createdAt")
     .order("createdAt", { ascending: false })
     .limit(100);
+  const reminderData = await loadReminderData(claims.sub, user.id);
 
   return (
     <>
@@ -46,6 +48,7 @@ export default async function NotificationsPage() {
                 ? "We could not load your notifications. Please try again."
                 : ""
             }
+            initialReminderCount={reminderData.activeCount}
           />
         </section>
       </main>

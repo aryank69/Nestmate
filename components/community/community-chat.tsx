@@ -36,6 +36,10 @@ import {
   shouldShowCommunityDateSeparator,
 } from "@/lib/community-chat";
 import { chatInitials } from "@/lib/chat";
+import {
+  getSafetyRestrictionMessage,
+  isSafetyRestrictionError,
+} from "@/lib/spam-safeguards";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import type {
@@ -311,7 +315,9 @@ export function CommunityChat({
     if (error || !data) {
       console.error("[community-chat:send] Unable to send message", error);
       setSendError(
-        "Your message was not sent. Check your connection and try again.",
+        isSafetyRestrictionError(error)
+          ? getSafetyRestrictionMessage("community-message")
+          : "Your message was not sent. Check your connection and try again.",
       );
       setIsSending(false);
       return;

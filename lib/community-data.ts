@@ -1,18 +1,41 @@
 import "server-only";
 
 import type { Prisma } from "@/generated/prisma/client";
+import {
+  commuteBounds,
+  distanceBetweenKm,
+  summarizeCommute,
+} from "@/lib/commute";
 import { prisma } from "@/lib/prisma";
+import { loadResponsivenessByUserIds } from "@/lib/responsiveness-data";
+import {
+  loadListingFeedbackAggregates,
+  loadUserTrustScores,
+} from "@/lib/trust-score-data";
+import { calculateListingTrustScore } from "@/lib/trust-score";
+import {
+  emptyListingRealityScore,
+  loadListingRealityScores,
+} from "@/lib/listing-reality-data";
 import {
   communityInitials,
   DATABASE_TO_GENDER,
   DATABASE_TO_POST_TYPE,
+  formatListingOccupancy,
   formatCommunityAmount,
 } from "@/lib/community";
 import {
   createListingImageUrlMap,
   createListingImageUrls,
 } from "@/lib/listing-images.server";
+import { listingFreshness } from "@/lib/listing-freshness";
+import { publicMapPoint } from "@/lib/maps";
+import { verificationSummary } from "@/lib/verification";
 import type { CompatibilityProfile } from "@/types/compatibility";
+import type {
+  CommuteBounds,
+  PrivateCommuteDestination,
+} from "@/types/commute";
 import type {
   CommunityPostFilters,
   CommunityPostTypeCounts,
@@ -102,7 +125,11 @@ export async function loadCommunityLocations(): Promise<
         select: {
           members: true,
           posts: {
-            where: { status: "ACTIVE", publishedAt: { not: null } },
+            where: {
+              status: "ACTIVE",
+              availabilityStatus: { in: ["AVAILABLE", "RESERVED"] },
+              publishedAt: { not: null },
+            },
           },
         },
       },
@@ -150,7 +177,11 @@ export async function loadCommunityLocation(
         select: {
           members: true,
           posts: {
-            where: { status: "ACTIVE", publishedAt: { not: null } },
+            where: {
+              status: "ACTIVE",
+              availabilityStatus: { in: ["AVAILABLE", "RESERVED"] },
+              publishedAt: { not: null },
+            },
           },
         },
       },
@@ -214,20 +245,6 @@ function formatListingMoney(value: number | null) {
   }).format(value);
 }
 
-function occupancyLabel(
-  category: CommunityPost["category"],
-  roomType: "PRIVATE_ROOM" | "SHARED_ROOM" | "ENTIRE_PLACE" | null,
-  availableSpots: number | null,
-) {
-  if (category === "PG Available") {
-    if (availableSpots === 1) return "Single occupancy";
-    if (availableSpots === 2) return "Twin sharing";
-    if (availableSpots === 3) return "Triple sharing";
-    return availableSpots ? `${availableSpots} sharing` : "Multiple options";
-  }
-  return roomTypeLabel(roomType);
-}
-
 function profileValue<T extends string>(
   map: Record<T, string>,
   value: T | null,
@@ -235,38 +252,119 @@ function profileValue<T extends string>(
   return value ? map[value] : null;
 }
 
+function privateCommuteDestination(
+  preference:
+    | {
+        commuteDestination: string | null;
+        commuteLatitude: Prisma.Decimal | null;
+        commuteLongitude: Prisma.Decimal | null;
+        preferredCommuteKm: number | null;
+      }
+    | null
+    | undefined,
+): PrivateCommuteDestination | null {
+  if (
+    !preference?.commuteDestination ||
+    preference.commuteLatitude === null ||
+    preference.commuteLongitude === null
+  ) {
+    return null;
+  }
+
+  return {
+    label: preference.commuteDestination,
+    latitude: Number(preference.commuteLatitude),
+    longitude: Number(preference.commuteLongitude),
+    preferredRangeKm: preference.preferredCommuteKm,
+  };
+}
+
+type KnownCommunityViewerState = {
+  blockedUserIds: string[];
+  savedPostIds: string[];
+  closedPostIds: string[];
+  activityStages: Array<{ postId: string | null; stage: import("@/types/activity").InterestStage }>;
+  commuteDestination: PrivateCommuteDestination | null;
+};
+
 export async function loadCommunityPosts(
   viewerAuthUserId: string | null,
   communityId: string,
   filters: CommunityPostFilters,
-  knownBlockedUserIds?: string[],
-  knownSavedPostIds?: string[],
+  knownViewerState?: KnownCommunityViewerState,
   requestedPostId?: string,
 ): Promise<CommunityPost[]> {
   const viewerState =
-    viewerAuthUserId &&
-    (knownBlockedUserIds === undefined || knownSavedPostIds === undefined)
+    viewerAuthUserId && !knownViewerState
       ? await prisma.user.findUnique({
           where: { authUserId: viewerAuthUserId },
           select: {
+            id: true,
             blocksCreated: { select: { blockedId: true } },
             savedPosts: { select: { postId: true } },
+            interestsTracked: {
+              where: { targetType: "LISTING" },
+              select: { postId: true, stage: true },
+            },
+            documentSpacesAsParticipantOne: {
+              where: { status: "CLOSED", targetType: "LISTING" },
+              select: { postId: true, post: { select: { authorId: true } } },
+            },
+            documentSpacesAsParticipantTwo: {
+              where: { status: "CLOSED", targetType: "LISTING" },
+              select: { postId: true, post: { select: { authorId: true } } },
+            },
+            preferences: {
+              select: {
+                commuteDestination: true,
+                commuteLatitude: true,
+                commuteLongitude: true,
+                preferredCommuteKm: true,
+              },
+            },
           },
         })
       : null;
   const blockedUserIds =
-    knownBlockedUserIds ??
+    knownViewerState?.blockedUserIds ??
     viewerState?.blocksCreated.map(({ blockedId }) => blockedId) ??
     [];
   const savedPostIds = new Set(
-    knownSavedPostIds ?? viewerState?.savedPosts.map(({ postId }) => postId) ?? [],
+    knownViewerState?.savedPostIds ??
+      viewerState?.savedPosts.map(({ postId }) => postId) ??
+      [],
   );
+  const closedPostIds =
+    knownViewerState?.closedPostIds ??
+    [
+      ...(viewerState?.documentSpacesAsParticipantOne ?? []),
+      ...(viewerState?.documentSpacesAsParticipantTwo ?? []),
+    ].flatMap((space) =>
+      space.postId && space.post?.authorId !== viewerState?.id
+        ? [space.postId]
+        : [],
+    );
+  const activityStageByPostId = new Map(
+    (knownViewerState?.activityStages ?? viewerState?.interestsTracked ?? []).flatMap(
+      ({ postId, stage }) => postId ? [[postId, stage] as const] : [],
+    ),
+  );
+  const destination =
+    knownViewerState?.commuteDestination ??
+    privateCommuteDestination(viewerState?.preferences);
+  const bounds =
+    destination && filters.maximumDistanceKm
+      ? commuteBounds(destination, filters.maximumDistanceKm)
+      : null;
 
   const where = communityPostWhere(
     communityId,
     filters,
     blockedUserIds,
+    closedPostIds,
     true,
+    bounds,
+    requestedPostId ? viewerAuthUserId : null,
   );
 
   const posts = await prisma.post.findMany({
@@ -285,6 +383,9 @@ export async function loadCommunityPosts(
       preferredOccupant: true,
       attachedBathroom: true,
       parkingType: true,
+      latitude: true,
+      longitude: true,
+      locationPrecision: true,
       roomType: true,
       bedrooms: true,
       availableSpots: true,
@@ -294,6 +395,17 @@ export async function loadCommunityPosts(
       imagePaths: true,
       publishedAt: true,
       createdAt: true,
+      availabilityStatus: true,
+      lastConfirmedAt: true,
+      verificationChecks: {
+        where: { status: "VERIFIED" },
+        select: {
+          kind: true,
+          status: true,
+          verifiedAt: true,
+          expiresAt: true,
+        },
+      },
       community: {
         select: {
           locality: {
@@ -310,6 +422,17 @@ export async function loadCommunityPosts(
           authUserId: true,
           name: true,
           profession: true,
+          createdAt: true,
+          updatedAt: true,
+          verificationChecks: {
+            where: { status: "VERIFIED" },
+            select: {
+              kind: true,
+              status: true,
+              verifiedAt: true,
+              expiresAt: true,
+            },
+          },
           preferences: {
             select: {
               budgetMin: true,
@@ -345,8 +468,38 @@ export async function loadCommunityPosts(
   const imageUrlMap = await createListingImageUrlMap(
     posts.flatMap((post) => post.imagePaths),
   );
+  const responsivenessByUserId = await loadResponsivenessByUserIds(
+    [...new Map(
+      posts.map((post) => [
+        post.author.id,
+        {
+          id: post.author.id,
+          createdAt: post.author.createdAt,
+          updatedAt: post.author.updatedAt,
+        },
+      ]),
+    ).values()],
+  );
+  const listingPostIds = posts
+    .filter(({ type }) => type === "ROOM_AVAILABLE" || type === "PG_AVAILABLE")
+    .map(({ id }) => id);
+  const [trustByUserId, feedbackByPostId, realityByPostId] = await Promise.all([
+    loadUserTrustScores(
+      [...new Map(
+        posts.map((post) => [
+          post.author.id,
+          {
+            id: post.author.id,
+            responsiveness: responsivenessByUserId.get(post.author.id)!,
+          },
+        ]),
+      ).values()],
+    ),
+    loadListingFeedbackAggregates(listingPostIds),
+    loadListingRealityScores(listingPostIds),
+  ]);
 
-  return posts.map((post) => {
+  return posts.flatMap((post) => {
     const category = DATABASE_TO_POST_TYPE[post.type];
     const preferences = post.author.preferences;
     const compatibilityProfile: CompatibilityProfile | undefined =
@@ -381,7 +534,52 @@ export async function loadCommunityPosts(
           }
         : undefined;
 
-    return {
+    const listingLocation =
+      (category === "Room Available" || category === "PG Available") &&
+      post.latitude !== null &&
+      post.longitude !== null &&
+      post.locationPrecision
+        ? publicMapPoint(
+            {
+              latitude: Number(post.latitude),
+              longitude: Number(post.longitude),
+            },
+            post.locationPrecision,
+          )
+        : null;
+    const commute =
+      listingLocation && destination
+        ? summarizeCommute(listingLocation, destination)
+        : null;
+
+    if (
+      filters.maximumDistanceKm !== null &&
+      destination &&
+      (!commute || commute.distanceKm > filters.maximumDistanceKm)
+    ) {
+      return [];
+    }
+
+    const authorVerification = verificationSummary(
+      post.author.verificationChecks,
+    );
+    const authorTrust = trustByUserId.get(post.author.id)!;
+    const availability = listingFreshness(
+      post.availabilityStatus,
+      post.lastConfirmedAt,
+    );
+    const listingVerification = verificationSummary(post.verificationChecks);
+    const trust =
+      category === "Room Available" || category === "PG Available"
+        ? calculateListingTrustScore({
+            ownerTrust: authorTrust,
+            verificationKinds: listingVerification.badges.map(({ kind }) => kind),
+            availability,
+            feedback: feedbackByPostId.get(post.id) ?? null,
+          })
+        : authorTrust;
+
+    return [{
       id: post.id,
       author: {
         authUserId: post.author.authUserId,
@@ -393,7 +591,10 @@ export async function loadCommunityPosts(
           (preferences?.occupationStatus
             ? occupationLabels[preferences.occupationStatus]
             : "NestMate member"),
+        verification: authorVerification,
+        trust: authorTrust,
         compatibilityProfile,
+        responsiveness: responsivenessByUserId.get(post.author.id)!,
       },
       city: post.community.locality.city.name,
       locality: post.community.locality.name,
@@ -405,9 +606,15 @@ export async function loadCommunityPosts(
         post.monthlyAmountMin,
         post.monthlyAmountMax,
       ),
+      monthlyAmountMin: post.monthlyAmountMin,
+      monthlyAmountMax: post.monthlyAmountMax,
+      securityDeposit: post.securityDeposit,
+      maintenanceAmount: post.maintenanceAmount,
       moveInDate: formatMoveInDate(post.moveInDate),
+      moveInDateValue: post.moveInDate?.toISOString().slice(0, 10) ?? null,
       tags: post.tags,
       postedAt: relativePostedAt(post.publishedAt ?? post.createdAt),
+      availability,
       images: post.imagePaths.flatMap((path) => {
         const url = imageUrlMap.get(path);
         return url ? [{ path, url }] : [];
@@ -418,9 +625,8 @@ export async function loadCommunityPosts(
               furnishing: post.furnishingStatus
                 ? furnishingLabels[post.furnishingStatus]
                 : null,
-              occupancy: occupancyLabel(
+              occupancy: formatListingOccupancy(
                 category,
-                post.roomType,
                 post.availableSpots,
               ),
               deposit: formatListingMoney(post.securityDeposit),
@@ -451,9 +657,18 @@ export async function loadCommunityPosts(
               amenities: post.amenities,
             }
           : null,
+      listingLocation,
+      commute,
+      recommendation: null,
+      verification: listingVerification,
+      trust,
+      reality: realityByPostId.get(post.id) ?? emptyListingRealityScore(),
       isOwner: post.author.authUserId === viewerAuthUserId,
       isSaved: savedPostIds.has(post.id),
-    };
+      activityStage:
+        activityStageByPostId.get(post.id) ??
+        (savedPostIds.has(post.id) ? "SHORTLISTED" : null),
+    }];
   });
 }
 
@@ -478,9 +693,9 @@ export async function loadCommunityPostDetail(
       budgetMax: null,
       moveInBy: "",
       genderPreference: null,
-      sort: "newest",
+      maximumDistanceKm: null,
+      sort: "recommended",
     },
-    undefined,
     undefined,
     postId,
   );
@@ -491,9 +706,24 @@ function communityPostWhere(
   communityId: string,
   filters: CommunityPostFilters,
   blockedUserIds: string[],
+  closedPostIds: string[],
   includePostType: boolean,
+  bounds: CommuteBounds | null = null,
+  closedOwnerAuthUserId: string | null = null,
 ): Prisma.PostWhereInput {
   const and: Prisma.PostWhereInput[] = [];
+
+  and.push({
+    OR: [
+      { availabilityStatus: { in: ["AVAILABLE", "RESERVED"] } },
+      ...(closedOwnerAuthUserId
+        ? [{
+            availabilityStatus: "CLOSED" as const,
+            author: { authUserId: closedOwnerAuthUserId },
+          }]
+        : []),
+    ],
+  });
 
   if (filters.query) {
     and.push({
@@ -532,13 +762,23 @@ function communityPostWhere(
           : { in: ["ANY", filters.genderPreference] },
     });
   }
+  if (bounds) {
+    and.push({
+      type: { in: ["ROOM_AVAILABLE", "PG_AVAILABLE"] },
+      latitude: { gte: bounds.latitudeMin, lte: bounds.latitudeMax },
+      longitude: { gte: bounds.longitudeMin, lte: bounds.longitudeMax },
+    });
+  }
 
   return {
     communityId,
     status: "ACTIVE",
+    moderationStatus: "VISIBLE",
     publishedAt: { not: null },
+    author: { moderationState: { isNot: { status: "SUSPENDED" } } },
     ...(includePostType && filters.postType ? { type: filters.postType } : {}),
     ...(blockedUserIds.length ? { authorId: { notIn: blockedUserIds } } : {}),
+    ...(closedPostIds.length ? { id: { notIn: closedPostIds } } : {}),
     ...(and.length ? { AND: and } : {}),
   };
 }
@@ -547,10 +787,63 @@ async function loadCommunityPostTypeCounts(
   communityId: string,
   filters: CommunityPostFilters,
   blockedUserIds: string[],
+  closedPostIds: string[],
+  destination: PrivateCommuteDestination | null,
 ): Promise<CommunityPostTypeCounts> {
+  const bounds =
+    destination && filters.maximumDistanceKm
+      ? commuteBounds(destination, filters.maximumDistanceKm)
+      : null;
+  if (bounds && filters.maximumDistanceKm && destination) {
+    const candidates = await prisma.post.findMany({
+      where: communityPostWhere(
+        communityId,
+        filters,
+        blockedUserIds,
+        closedPostIds,
+        false,
+        bounds,
+      ),
+      select: {
+        type: true,
+        latitude: true,
+        longitude: true,
+      },
+      take: 500,
+    });
+    const counts: CommunityPostTypeCounts = {
+      NEED_ROOM: 0,
+      ROOM_AVAILABLE: 0,
+      NEED_FLATMATE: 0,
+      PG_AVAILABLE: 0,
+    };
+    for (const post of candidates) {
+      if (
+        post.latitude !== null &&
+        post.longitude !== null &&
+        distanceBetweenKm(
+          destination,
+          {
+            latitude: Number(post.latitude),
+            longitude: Number(post.longitude),
+          },
+        ) <= filters.maximumDistanceKm
+      ) {
+        counts[post.type] += 1;
+      }
+    }
+    return counts;
+  }
+
   const rows = await prisma.post.groupBy({
     by: ["type"],
-    where: communityPostWhere(communityId, filters, blockedUserIds, false),
+    where: communityPostWhere(
+      communityId,
+      filters,
+      blockedUserIds,
+      closedPostIds,
+      false,
+    ),
     _count: { _all: true },
   });
   const counts: CommunityPostTypeCounts = {
@@ -580,6 +873,26 @@ export async function loadCommunityRoom(
           name: true,
           blocksCreated: { select: { blockedId: true } },
           savedPosts: { select: { postId: true } },
+          interestsTracked: {
+            where: { targetType: "LISTING" },
+            select: { postId: true, stage: true },
+          },
+          documentSpacesAsParticipantOne: {
+            where: { status: "CLOSED", targetType: "LISTING" },
+            select: { postId: true, post: { select: { authorId: true } } },
+          },
+          documentSpacesAsParticipantTwo: {
+            where: { status: "CLOSED", targetType: "LISTING" },
+            select: { postId: true, post: { select: { authorId: true } } },
+          },
+          preferences: {
+            select: {
+              commuteDestination: true,
+              commuteLatitude: true,
+              commuteLongitude: true,
+              preferredCommuteKm: true,
+            },
+          },
           memberships: {
             where: { communityId: community.id },
             select: { communityId: true, lastChatReadAt: true },
@@ -591,15 +904,34 @@ export async function loadCommunityRoom(
   const blockedUserIds =
     viewer?.blocksCreated.map(({ blockedId }) => blockedId) ?? [];
   const savedPostIds = viewer?.savedPosts.map(({ postId }) => postId) ?? [];
+  const closedPostIds = [
+    ...(viewer?.documentSpacesAsParticipantOne ?? []),
+    ...(viewer?.documentSpacesAsParticipantTwo ?? []),
+  ].flatMap((space) =>
+    space.postId && space.post?.authorId !== viewer?.id ? [space.postId] : [],
+  );
+  const destination = privateCommuteDestination(viewer?.preferences);
+  const knownViewerState: KnownCommunityViewerState = {
+    blockedUserIds,
+    savedPostIds,
+    closedPostIds,
+    activityStages: viewer?.interestsTracked ?? [],
+    commuteDestination: destination,
+  };
   const [posts, postTypeCounts] = await Promise.all([
     loadCommunityPosts(
       viewerAuthUserId,
       community.id,
       filters,
-      blockedUserIds,
-      savedPostIds,
+      knownViewerState,
     ),
-    loadCommunityPostTypeCounts(community.id, filters, blockedUserIds),
+    loadCommunityPostTypeCounts(
+      community.id,
+      filters,
+      blockedUserIds,
+      closedPostIds,
+      destination,
+    ),
   ]);
 
   const membership = viewer?.memberships[0];
@@ -608,11 +940,15 @@ export async function loadCommunityRoom(
       ? await prisma.communityMessage.count({
           where: {
             communityId: community.id,
+            moderationStatus: "VISIBLE",
             senderId: {
               notIn: [
                 viewer.id,
                 ...viewer.blocksCreated.map(({ blockedId }) => blockedId),
               ],
+            },
+            sender: {
+              moderationState: { isNot: { status: "SUSPENDED" } },
             },
             ...(membership.lastChatReadAt
               ? { createdAt: { gt: membership.lastChatReadAt } }
@@ -646,6 +982,7 @@ export async function loadEditableCommunityPost(
     where: {
       id: postId,
       status: "ACTIVE",
+      moderationStatus: "VISIBLE",
       author: { authUserId },
     },
   });
@@ -703,6 +1040,16 @@ export async function loadEditableCommunityPost(
     genderPreference: DATABASE_TO_GENDER[post.genderPreference],
     housingType,
     housingFeature,
+    occupancy:
+      postType === "Room Available"
+        ? post.availableSpots === 1
+          ? "Single occupancy"
+          : post.availableSpots === 2
+            ? "Double sharing"
+            : post.availableSpots === 3
+              ? "Triple sharing"
+              : ""
+        : "",
     furnishingStatus:
       postType === "Room Available" || postType === "PG Available"
         ? post.furnishingStatus
@@ -720,6 +1067,10 @@ export async function loadEditableCommunityPost(
     attachedBathroom:
       post.attachedBathroom === null ? "" : post.attachedBathroom ? "Yes" : "No",
     parkingType: post.parkingType ? parkingLabels[post.parkingType] : "",
+    locationLatitude: post.latitude?.toString() ?? "",
+    locationLongitude: post.longitude?.toString() ?? "",
+    locationPrecision:
+      post.locationPrecision === "EXACT" ? "Exact" : "Approximate",
     description: post.description,
     tags: post.tags.join(", "),
     images,

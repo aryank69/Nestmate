@@ -2,18 +2,13 @@ import Link from "next/link";
 import {
   ArrowRight,
   Bookmark,
-  CalendarDays,
   CircleAlert,
-  IndianRupee,
-  MapPin,
   Search,
   UserRound,
 } from "lucide-react";
 
-import {
-  DeleteSavedSearchButton,
-  SavePostButton,
-} from "@/components/saved/saved-controls";
+import { DeleteSavedSearchButton } from "@/components/saved/saved-controls";
+import { SavedPostGrid } from "@/components/saved/saved-post-grid";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { SavedPostView, SavedSearchView } from "@/types/saved";
@@ -99,31 +94,7 @@ export function SavedPage({
         </div>
 
         {posts.length ? (
-          <div className="mt-5 grid gap-4 md:grid-cols-2">
-            {posts.map((post) => (
-              <article key={post.id} className="surface-card flex flex-col p-5">
-                <div className="flex items-start gap-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold uppercase tracking-[0.08em] text-primary">{post.category}</p>
-                    <h3 className="mt-1 text-lg font-semibold leading-6">{post.title}</h3>
-                    <p className="mt-1 text-sm text-muted-foreground">Posted by {post.authorName}</p>
-                  </div>
-                  <SavePostButton postId={post.id} initialSaved refreshOnChange />
-                </div>
-                <div className="mt-4 grid gap-2 text-sm sm:grid-cols-3 md:grid-cols-1 lg:grid-cols-3">
-                  <p className="flex items-center gap-2 rounded-xl bg-muted/45 px-3 py-2.5"><MapPin aria-hidden="true" className="size-3.5 text-primary" />{post.locality}, {post.city}</p>
-                  <p className="flex items-center gap-2 rounded-xl bg-muted/45 px-3 py-2.5"><IndianRupee aria-hidden="true" className="size-3.5 text-primary" />{post.priceLabel}</p>
-                  <p className="flex items-center gap-2 rounded-xl bg-muted/45 px-3 py-2.5"><CalendarDays aria-hidden="true" className="size-3.5 text-primary" />{post.moveInLabel}</p>
-                </div>
-                <div className="mt-auto flex items-center justify-between gap-3 border-t border-border/70 pt-4">
-                  <p className="text-xs text-muted-foreground">Saved {post.savedAt}</p>
-                  <Link href={post.communityHref} className={buttonVariants({ variant: "outline", size: "sm" })}>
-                    Open community<ArrowRight aria-hidden="true" className="size-3.5" />
-                  </Link>
-                </div>
-              </article>
-            ))}
-          </div>
+          <SavedPostGrid posts={posts} />
         ) : (
           <EmptyCard title="No saved posts yet" body="Use the Save button on a community post to add it to your shortlist." href="/community" action="Browse communities" />
         )}

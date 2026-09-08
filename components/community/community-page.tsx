@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import {
   Armchair,
-  BadgeCheck,
   Bath,
   BedDouble,
   CalendarDays,
@@ -19,6 +18,7 @@ import {
   MessageCircle,
   MessagesSquare,
   PencilLine,
+  Route,
   SearchX,
   Sparkles,
   Trash2,
@@ -29,12 +29,20 @@ import {
 
 import {
   deleteCommunityPostAction,
+  updatePostAvailabilityAction,
 } from "@/app/community/actions";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { ActivityStageControl } from "@/components/activity/activity-stage-control";
 import { PostImageGallery } from "@/components/community/post-image-gallery";
 import { CompatibilitySummary } from "@/components/compatibility/compatibility-summary";
+import { PropertyLocationMap } from "@/components/maps/property-location-map";
+import { RecommendationSummary } from "@/components/recommendations/recommendation-summary";
+import { ResponsivenessIndicator } from "@/components/responsiveness-indicator";
 import { SavePostButton } from "@/components/saved/saved-controls";
 import { SafetyActions } from "@/components/trust-safety/safety-actions";
+import { TrustScoreIndicator } from "@/components/trust/trust-score-indicator";
+import { ListingRealityScoreIndicator } from "@/components/trust/listing-reality-score";
+import { TrustBadges } from "@/components/verification/trust-badges";
 import {
   communityCategories,
   isPostCategory,
@@ -45,6 +53,7 @@ import {
   calculateCompatibility,
   compatibilityProfileFromUserProfile,
 } from "@/lib/compatibility";
+import { calculateListingRecommendation } from "@/lib/recommendations";
 import type {
   CommunityListingDetails,
   CommunityPost,
@@ -59,6 +68,12 @@ const categoryStyles: Record<CommunityPostCategory, string> = {
   "Need Flatmate": "bg-primary/10 text-primary",
   "PG Available": "bg-muted text-foreground",
 };
+
+const availabilityStyles = {
+  AVAILABLE: "border-emerald-200 bg-emerald-50 text-emerald-800",
+  RESERVED: "border-amber-200 bg-amber-50 text-amber-800",
+  CLOSED: "border-border bg-muted text-muted-foreground",
+} as const;
 
 const selectClassName =
   "h-12 w-full appearance-none rounded-xl border border-input bg-background pl-10 pr-10 text-sm font-semibold text-foreground shadow-xs outline-none transition-[border-color,box-shadow] hover:border-border focus:border-primary focus:ring-3 focus:ring-ring/15";
@@ -149,6 +164,11 @@ export function CommunityPostCard({
           candidateProfile,
         )
       : null;
+  const recommendation =
+    post.recommendation ??
+    (viewerProfile
+      ? calculateListingRecommendation(post, viewerProfile)
+      : null);
 
   return (
     <article className="group/card surface-card p-5 transition-[border-color,box-shadow] hover:border-primary/20 hover:shadow-xl hover:shadow-foreground/[0.06] sm:p-6">
@@ -162,20 +182,28 @@ export function CommunityPostCard({
             <p className="truncate text-base font-semibold">
               {post.author.name}
             </p>
-            {post.author.verified ? (
-              <BadgeCheck
-                aria-label="Verified member"
-                className="size-4.5 fill-primary text-primary-foreground"
-              />
-            ) : null}
           </div>
           <p className="mt-0.5 text-sm text-muted-foreground">
             {post.author.role}
           </p>
+          <div className="mt-2">
+            <ResponsivenessIndicator value={post.author.responsiveness} />
+          </div>
+          <TrustBadges
+            verification={post.author.verification}
+            compact
+            showDisclaimer={detail}
+            className="mt-2"
+          />
+          <TrustScoreIndicator
+            value={post.author.trust}
+            details={detail}
+            className="mt-2"
+          />
         </div>
 
         <div className="flex shrink-0 items-center gap-1">
-          {showSaveAction ? (
+          {showSaveAction && post.availability.status !== "CLOSED" ? (
             <SavePostButton
               postId={post.id}
               initialSaved={Boolean(post.isSaved)}
@@ -199,6 +227,39 @@ export function CommunityPostCard({
       </header>
 
       <PostImageGallery images={post.images} title={post.title} detail={detail} />
+
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <span
+          className={cn(
+            "inline-flex rounded-full border px-3 py-1 text-xs font-semibold",
+            availabilityStyles[post.availability.status],
+          )}
+        >
+          {post.availability.label}
+        </span>
+        {post.availability.isStale ? (
+          <span className="inline-flex rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-xs font-semibold text-orange-800">
+            Stale listing
+          </span>
+        ) : null}
+        <span className="text-xs font-medium text-muted-foreground">
+          {post.availability.freshnessLabel}
+        </span>
+        <TrustBadges verification={post.verification} compact />
+        {post.category === "Room Available" || post.category === "PG Available" ? (
+          <>
+            <TrustScoreIndicator
+              value={post.trust}
+              scope="listing"
+              details={detail}
+            />
+            <ListingRealityScoreIndicator
+              value={post.reality}
+              details={detail}
+            />
+          </>
+        ) : null}
+      </div>
 
       <div className="mt-5">
         <span
@@ -241,6 +302,23 @@ export function CommunityPostCard({
         </div>
       </dl>
 
+      {post.commute ? (
+        <div className="mt-3 flex items-start gap-3 rounded-xl border border-primary/15 bg-primary/[0.045] px-3.5 py-3">
+          <Route aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-primary" />
+          <div>
+            <p className="text-sm font-semibold">
+              {post.commute.distanceLabel} from {post.commute.destinationLabel}
+            </p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              {post.commute.relevanceLabel} · Straight-line estimate
+              {post.commute.basedOnApproximateLocation
+                ? " using the listing’s privacy-rounded area"
+                : " using the shared map pin"}
+            </p>
+          </div>
+        </div>
+      ) : null}
+
       <div className="mt-4 flex flex-wrap gap-2">
         {post.tags.map((tag) => (
           <span
@@ -255,6 +333,15 @@ export function CommunityPostCard({
       {detail && post.listingDetails ? (
         <ListingDetails details={post.listingDetails} />
       ) : null}
+
+      {detail && post.listingLocation ? (
+        <PropertyLocationMap
+          location={post.listingLocation}
+          locality={post.locality}
+        />
+      ) : null}
+
+      <RecommendationSummary result={recommendation} />
 
       {compatibility ? (
         <CompatibilitySummary result={compatibility} />
@@ -281,8 +368,23 @@ export function CommunityPostCard({
             View Details
           </Link>
         ) : null}
+        {showSaveAction &&
+        !post.isOwner &&
+        (post.category === "Room Available" || post.category === "PG Available") &&
+        post.availability.status !== "CLOSED" ? (
+          <ActivityStageControl
+            targetType="LISTING"
+            targetId={post.id}
+            initialStage={post.activityStage}
+            compact
+            className="w-full sm:w-48"
+          />
+        ) : null}
         {post.isOwner ? (
-          <PostOwnerActions postId={post.id} />
+          <PostOwnerActions
+            postId={post.id}
+            availability={post.availability}
+          />
         ) : (
           <Link
             href={{
@@ -303,11 +405,30 @@ export function CommunityPostCard({
   );
 }
 
-function PostOwnerActions({ postId }: { postId: string }) {
+function PostOwnerActions({
+  postId,
+  availability,
+}: {
+  postId: string;
+  availability: CommunityPost["availability"];
+}) {
   const router = useRouter();
   const [isConfirming, setIsConfirming] = useState(false);
   const [error, setError] = useState("");
   const [isPending, startDeleteTransition] = useTransition();
+  const [isStatusPending, startStatusTransition] = useTransition();
+
+  const updateStatus = (status: string) => {
+    setError("");
+    startStatusTransition(async () => {
+      const result = await updatePostAvailabilityAction(postId, status);
+      if (result.success) {
+        router.refresh();
+        return;
+      }
+      setError(result.message);
+    });
+  };
 
   const deletePost = () => {
     setError("");
@@ -355,6 +476,47 @@ function PostOwnerActions({ postId }: { postId: string }) {
 
   return (
     <div className="flex w-full flex-col gap-2 sm:w-auto">
+      <div className="flex flex-col gap-2 rounded-xl border border-border/70 bg-muted/35 p-2.5 sm:min-w-56">
+        <label
+          htmlFor={`availability-${postId}`}
+          className="text-xs font-semibold text-muted-foreground"
+        >
+          Listing status
+        </label>
+        <div className="relative">
+          <select
+            id={`availability-${postId}`}
+            value={availability.status}
+            onChange={(event) => updateStatus(event.target.value)}
+            disabled={isStatusPending}
+            className="h-10 w-full appearance-none rounded-lg border border-input bg-background px-3 pr-9 text-sm font-semibold outline-none focus:border-primary focus:ring-3 focus:ring-ring/15 disabled:opacity-60"
+          >
+            <option value="AVAILABLE">Available</option>
+            <option value="RESERVED">Reserved</option>
+            <option value="CLOSED">Closed</option>
+          </select>
+          <ChevronDown
+            aria-hidden="true"
+            className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+          />
+        </div>
+        {availability.isStale && availability.status !== "CLOSED" ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => updateStatus(availability.status)}
+            disabled={isStatusPending}
+          >
+            {isStatusPending ? (
+              <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
+            ) : (
+              <Clock3 aria-hidden="true" className="size-4" />
+            )}
+            Confirm current status
+          </Button>
+        ) : null}
+      </div>
       <div className="flex gap-2">
         <Link
           href={`/community/post/${encodeURIComponent(postId)}/edit`}

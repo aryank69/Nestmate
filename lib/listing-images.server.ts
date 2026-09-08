@@ -8,6 +8,7 @@ const SIGNED_URL_LIFETIME_SECONDS = 60 * 60;
 
 export async function createListingImageUrls(
   paths: string[],
+  expiresIn = SIGNED_URL_LIFETIME_SECONDS,
 ): Promise<ListingImage[]> {
   const uniquePaths = [...new Set(paths)].slice(0, 6);
   if (!uniquePaths.length) return [];
@@ -15,7 +16,7 @@ export async function createListingImageUrls(
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.storage
     .from(LISTING_IMAGE_BUCKET)
-    .createSignedUrls(uniquePaths, SIGNED_URL_LIFETIME_SECONDS);
+    .createSignedUrls(uniquePaths, expiresIn);
 
   if (error) {
     console.error("Listing image URL creation failed", error.message);

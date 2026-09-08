@@ -145,11 +145,19 @@ export function savedSearchFilterLabels(kind: SavedSearchKind, filters: unknown)
   if (kind === "COMMUNITY_POSTS") {
     const postType = stringValue(filters, "postType");
     const gender = stringValue(filters, "genderPreference");
+    const maximumDistance = numberValue(filters, "maximumDistanceKm");
     if (postType) labels.push(postTypeLabels.get(postType) ?? postType);
     if (gender) labels.push(enumLabels[gender] ?? gender);
+    if (maximumDistance !== null) {
+      labels.push(`Within ${maximumDistance} km`);
+    }
   } else {
     const score = numberValue(filters, "minimumCompatibility");
+    const preferredCommute = numberValue(filters, "preferredCommuteKm");
     if (score !== null) labels.push(`${score}%+ compatibility`);
+    if (preferredCommute !== null) {
+      labels.push(`Commute up to ${preferredCommute} km`);
+    }
     for (const key of [
       "diet",
       "smoking",

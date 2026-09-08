@@ -51,7 +51,12 @@ async function resolveReportedUserId(
   if (targetType === "POST") {
     return (
       await prisma.post.findFirst({
-        where: { id: targetId, status: "ACTIVE", publishedAt: { not: null } },
+        where: {
+          id: targetId,
+          status: "ACTIVE",
+          moderationStatus: "VISIBLE",
+          publishedAt: { not: null },
+        },
         select: { authorId: true },
       })
     )?.authorId;
@@ -62,6 +67,7 @@ async function resolveReportedUserId(
       await prisma.message.findFirst({
         where: {
           id: targetId,
+          moderationStatus: "VISIBLE",
           conversation: {
             OR: [
               { participantOneId: reporterId },
@@ -78,6 +84,7 @@ async function resolveReportedUserId(
     await prisma.communityMessage.findFirst({
       where: {
         id: targetId,
+        moderationStatus: "VISIBLE",
         community: { members: { some: { userId: reporterId } } },
       },
       select: { senderId: true },

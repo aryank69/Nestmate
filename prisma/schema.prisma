@@ -27,6 +27,284 @@ enum PostStatus {
   ARCHIVED
 }
 
+enum ListingAvailabilityStatus {
+  AVAILABLE
+  RESERVED
+  CLOSED
+}
+
+enum VisitRequestStatus {
+  PENDING
+  PROPOSED
+  ACCEPTED
+  DECLINED
+  CANCELLED
+}
+
+enum VisitOutcomeType {
+  INTERESTED
+  NOT_SUITABLE
+  FINALIZED
+  NO_SHOW
+}
+
+enum VisitAttendanceConfirmation {
+  HAPPENED
+  MISSED
+  CANCELLED
+}
+
+enum InterestTargetType {
+  LISTING
+  FLATMATE
+}
+
+enum InterestStage {
+  INTERESTED
+  CONTACTED
+  VISIT_PLANNED
+  SHORTLISTED
+  FINALIZED
+  NOT_INTERESTED
+}
+
+enum MoveInChecklistItemKind {
+  DEPOSIT_CONFIRMATION
+  RENT_AMOUNT
+  MOVE_IN_DATE
+  ID_DOCUMENT_EXCHANGE
+  AGREEMENT_STATUS
+  INVENTORY_PHOTOS
+  UTILITY_RESPONSIBILITIES
+  KEYS
+  EMERGENCY_CONTACT_DETAILS
+}
+
+enum SharedDocumentCategory {
+  ID_PROOF
+  AGREEMENT_DRAFT
+  DEPOSIT_RECEIPT
+  INVENTORY_SHEET
+  MOVE_IN_DOCUMENT
+}
+
+enum DocumentAcknowledgementStatus {
+  REVIEWED
+  ACKNOWLEDGED
+}
+
+enum FinalizedMilestoneKind {
+  AGREEMENT_DRAFTED
+  AGREEMENT_REVIEWED
+  AGREEMENT_ACKNOWLEDGED
+  DEPOSIT_CONFIRMED
+  DOCUMENTS_EXCHANGED
+  INVENTORY_COMPLETED
+  KEYS_HANDED_OVER
+  MOVE_IN_COMPLETED
+}
+
+enum FinalizedMilestoneStatus {
+  PENDING
+  COMPLETED
+}
+
+enum FinalizedMatchStatus {
+  ACTIVE
+  COMPLETED
+  CLOSED
+}
+
+enum MatchClosureReason {
+  MOVE_IN_COMPLETED
+  MOVE_IN_CANCELLED
+  CREATED_BY_MISTAKE
+  ARCHIVED
+}
+
+enum HouseholdStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum HouseholdArchiveReason {
+  MEMBER_ARCHIVED
+  MEMBER_LEFT
+  MOVE_IN_RESET
+}
+
+enum HouseholdMemberStatus {
+  ACTIVE
+  LEFT
+}
+
+enum HouseholdItemKind {
+  RENT_DUE
+  UTILITY
+  CHORE
+  EXPENSE
+  NOTE
+  TASK
+}
+
+enum HouseholdRecurrence {
+  NONE
+  WEEKLY
+  MONTHLY
+}
+
+enum HouseholdExpenseCategory {
+  RENT
+  ELECTRICITY
+  INTERNET
+  GROCERIES
+  MAINTENANCE
+  SUBSCRIPTION
+  OTHER
+}
+
+enum HouseholdExpenseSplitMethod {
+  EQUAL
+  CUSTOM
+}
+
+enum HouseholdExpenseStatus {
+  OUTSTANDING
+  PARTIALLY_SETTLED
+  SETTLED
+}
+
+enum HouseholdExpenseShareStatus {
+  NO_PAYMENT_DUE
+  OUTSTANDING
+  PARTIALLY_SETTLED
+  SETTLED
+}
+
+enum HouseholdSettlementStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+enum HouseholdRecurringTemplateStatus {
+  ACTIVE
+  PAUSED
+  ENDED
+}
+
+enum HouseholdBudgetCategory {
+  OVERALL
+  RENT
+  UTILITIES
+  GROCERIES
+  MAINTENANCE
+  SUBSCRIPTIONS
+  OTHER
+}
+
+enum ReminderKind {
+  UPCOMING_VISIT
+  CHAT_FOLLOW_UP
+  SHORTLIST_IDLE
+  MOVE_IN_APPROACHING
+}
+
+enum ReminderTargetType {
+  VISIT
+  CONVERSATION
+  LISTING
+  FLATMATE
+}
+
+enum VerificationKind {
+  EMAIL
+  PHONE
+  PROFILE_COMPLETE
+  LISTING_DETAILS
+  IDENTITY
+  PROPERTY
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  EXPIRED
+}
+
+enum VerificationMethod {
+  AUTH_PROVIDER
+  COMPLETENESS_RULES
+  MANUAL_REVIEW
+  THIRD_PARTY
+}
+
+enum SafetyActivityScope {
+  POST
+  DIRECT_MESSAGE
+  COMMUNITY_MESSAGE
+  ALL
+}
+
+enum SafetyFlagCategory {
+  DUPLICATE_CONTENT
+  BURST_ACTIVITY
+  REPEATED_CONTACT
+  RAPID_ACCOUNT_ACTIVITY
+  USER_REPORT
+}
+
+enum SafetyFlagSeverity {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum SafetyFlagStatus {
+  OPEN
+  REVIEWED
+  DISMISSED
+}
+
+enum ModeratorRole {
+  ADMIN
+  MODERATOR
+}
+
+enum ModerationActionType {
+  DISMISS
+  WARN
+  HIDE_CONTENT
+  RESTRICT
+  SUSPEND
+  RESTORE_USER
+  SUPPORT_CASE_UPDATE
+}
+
+enum ModerationQueueType {
+  REPORT
+  SAFETY_FLAG
+  VERIFICATION_CHECK
+  USER_STATE
+  SUPPORT_CASE
+}
+
+enum ModerationReviewStatus {
+  DISMISSED
+  ACTIONED
+}
+
+enum UserModerationStatus {
+  RESTRICTED
+  SUSPENDED
+}
+
+enum ContentModerationStatus {
+  VISIBLE
+  HIDDEN
+}
+
 enum GenderPreference {
   ANY
   WOMEN
@@ -65,6 +343,11 @@ enum ParkingType {
   TWO_WHEELER
   CAR
   BOTH
+}
+
+enum LocationPrecision {
+  EXACT
+  APPROXIMATE
 }
 
 enum DietPreference {
@@ -128,6 +411,31 @@ enum NotificationType {
   COMMUNITY_MENTION
   COMMUNITY_REPLY
   POST_ACTIVITY
+  MODERATION_WARNING
+  SUPPORT_CASE_UPDATE
+  HOUSEHOLD_BILL
+  HOUSEHOLD_BUDGET
+}
+
+enum SupportCaseCategory {
+  GENERAL_SUPPORT
+  ACCOUNT_ACCESS
+  CONTENT_APPEAL
+  RESTRICTION_APPEAL
+  SAFETY_CONCERN
+  TECHNICAL_ISSUE
+}
+
+enum SupportCaseStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED
+  REJECTED
+}
+
+enum SupportMessageRole {
+  USER
+  MODERATOR
 }
 
 enum SavedSearchKind {
@@ -135,31 +443,117 @@ enum SavedSearchKind {
   PEOPLE
 }
 
+enum SearchTeamRole {
+  OWNER
+  MEMBER
+}
+
+enum SearchTeamInviteStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  CANCELLED
+}
+
+enum SearchTeamListingStatus {
+  CONSIDERING
+  SHORTLISTED
+}
+
+enum SearchTeamVoteChoice {
+  YES
+  MAYBE
+  NO
+}
+
 model User {
-  id                            String             @id @default(cuid())
-  authUserId                    String             @unique @db.Uuid
-  name                          String
-  email                         String?            @unique
-  dateOfBirth                   DateTime?          @db.Date
-  profession                    String?
-  companyOrCollege              String?
-  bio                           String?            @db.VarChar(500)
-  createdAt                     DateTime           @default(now())
-  updatedAt                     DateTime           @updatedAt
-  memberships                   CommunityMember[]
-  posts                         Post[]
-  preferences                   UserPreferences?
-  conversationsAsParticipantOne Conversation[]     @relation("ConversationParticipantOne")
-  conversationsAsParticipantTwo Conversation[]     @relation("ConversationParticipantTwo")
-  sentMessages                  Message[]
-  sentCommunityMessages         CommunityMessage[]
-  blocksCreated                 UserBlock[]        @relation("UserBlockBlocker")
-  blocksReceived                UserBlock[]        @relation("UserBlockBlocked")
-  reportsSubmitted              Report[]           @relation("ReportReporter")
-  notificationsReceived         Notification[]     @relation("NotificationRecipient")
-  notificationsCreated          Notification[]     @relation("NotificationActor")
-  savedPosts                    SavedPost[]
-  savedSearches                 SavedSearch[]
+  id                             String                          @id @default(cuid())
+  authUserId                     String                          @unique @db.Uuid
+  name                           String
+  email                          String?                         @unique
+  dateOfBirth                    DateTime?                       @db.Date
+  profession                     String?
+  companyOrCollege               String?
+  bio                            String?                         @db.VarChar(500)
+  createdAt                      DateTime                        @default(now())
+  updatedAt                      DateTime                        @updatedAt
+  memberships                    CommunityMember[]
+  posts                          Post[]
+  preferences                    UserPreferences?
+  conversationsAsParticipantOne  Conversation[]                  @relation("ConversationParticipantOne")
+  conversationsAsParticipantTwo  Conversation[]                  @relation("ConversationParticipantTwo")
+  sentMessages                   Message[]
+  sentCommunityMessages          CommunityMessage[]
+  blocksCreated                  UserBlock[]                     @relation("UserBlockBlocker")
+  blocksReceived                 UserBlock[]                     @relation("UserBlockBlocked")
+  reportsSubmitted               Report[]                        @relation("ReportReporter")
+  notificationsReceived          Notification[]                  @relation("NotificationRecipient")
+  notificationsCreated           Notification[]                  @relation("NotificationActor")
+  savedPosts                     SavedPost[]
+  savedSearches                  SavedSearch[]
+  shortlistsCreated              ShortlistedProfile[]            @relation("ProfileShortlistOwner")
+  shortlistedBy                  ShortlistedProfile[]            @relation("ProfileShortlistTarget")
+  recentViews                    RecentView[]                    @relation("RecentViewViewer")
+  profileViews                   RecentView[]                    @relation("RecentViewTargetUser")
+  visitsRequested                VisitRequest[]                  @relation("VisitRequester")
+  visitsOwned                    VisitRequest[]                  @relation("VisitOwner")
+  visitOutcomes                  VisitOutcome[]
+  visitAvailabilityRules         VisitAvailabilityRule[]
+  visitAvailabilityBlocks        VisitAvailabilityBlock[]
+  visitSlotPreferences           VisitSlotPreference[]
+  visitAttendances               VisitAttendance[]
+  visitFeedback                  VisitFeedback[]
+  listingRealityFeedback        ListingRealityFeedback[]
+  verificationChecks             VerificationCheck[]
+  safetyActivities               SafetyActivity[]
+  safetyFlags                    SafetyFlag[]
+  moderatorMembership            ModeratorMembership?
+  moderationState                UserModerationState?            @relation("ModeratedUser")
+  moderationStateUpdates         UserModerationState[]           @relation("ModerationStateUpdater")
+  moderationReviews              ModerationReview[]
+  moderationActions              ModerationAuditLog[]            @relation("ModeratorAudit")
+  moderationActionsReceived      ModerationAuditLog[]            @relation("ModerationSubject")
+  supportCases                   SupportCase[]
+  supportMessages                SupportCaseMessage[]
+  supportNotes                   SupportCaseInternalNote[]
+  interestsTracked               InterestActivity[]              @relation("InterestActivityOwner")
+  interestFrom                   InterestActivity[]              @relation("InterestActivityTargetUser")
+  reminders                      Reminder[]
+  moveInChecklistsOwned          MoveInChecklist[]               @relation("MoveInChecklistOwner")
+  moveInChecklistsAsTarget       MoveInChecklist[]               @relation("MoveInChecklistTargetUser")
+  documentSpacesAsParticipantOne FinalizedDocumentSpace[]        @relation("DocumentSpaceParticipantOne")
+  documentSpacesAsParticipantTwo FinalizedDocumentSpace[]        @relation("DocumentSpaceParticipantTwo")
+  documentSpacesAsFlatmateTarget FinalizedDocumentSpace[]        @relation("DocumentSpaceFlatmateTarget")
+  sharedDocuments                SharedDocument[]                @relation("SharedDocumentUploader")
+  documentAcknowledgements       SharedDocumentAcknowledgement[]
+  finalizedMilestones            FinalizedMatchMilestone[]
+  documentSpacesClosed           FinalizedDocumentSpace[]        @relation("DocumentSpaceClosedBy")
+  finalizedMatchStatusChanges    FinalizedMatchStatusChange[]    @relation("FinalizedMatchStatusActor")
+  householdMemberships           HouseholdMember[]
+  householdsArchived             Household[]                     @relation("HouseholdArchivedBy")
+  householdItemsCreated          HouseholdItem[]                 @relation("HouseholdItemCreator")
+  householdItemsAssigned         HouseholdItem[]                 @relation("HouseholdItemAssignee")
+  householdExpensesCreated       HouseholdExpense[]              @relation("HouseholdExpenseCreator")
+  householdExpensesPaid          HouseholdExpense[]              @relation("HouseholdExpensePayer")
+  householdExpenseShares         HouseholdExpenseShare[]         @relation("HouseholdExpenseShareMember")
+  householdExpenseCredits        HouseholdExpenseShare[]         @relation("HouseholdExpenseShareCreditor")
+  householdSettlementsFrom       HouseholdSettlement[]           @relation("HouseholdSettlementFrom")
+  householdSettlementsTo         HouseholdSettlement[]           @relation("HouseholdSettlementTo")
+  householdSettlementsRecorded   HouseholdSettlement[]           @relation("HouseholdSettlementRecorder")
+  householdSettlementsConfirmed  HouseholdSettlement[]           @relation("HouseholdSettlementConfirmer")
+  householdRecurringCreated      HouseholdRecurringExpenseTemplate[] @relation("HouseholdRecurringCreator")
+  householdRecurringPaid         HouseholdRecurringExpenseTemplate[] @relation("HouseholdRecurringPayer")
+  householdRecurringParticipants HouseholdRecurringExpenseParticipant[]
+  householdBudgetsCreated        HouseholdMonthlyBudget[]             @relation("HouseholdBudgetCreator")
+  householdBudgetsUpdated        HouseholdMonthlyBudget[]             @relation("HouseholdBudgetUpdater")
+  searchTeamsOwned               SearchTeam[]                          @relation("SearchTeamOwner")
+  searchTeamMemberships          SearchTeamMember[]
+  searchTeamInvitesSent          SearchTeamInvite[]                    @relation("SearchTeamInviteSender")
+  searchTeamInvitesReceived      SearchTeamInvite[]                    @relation("SearchTeamInviteRecipient")
+  searchTeamListingsAdded        SearchTeamListing[]
+  searchTeamVotes                SearchTeamVote[]
+  searchTeamComments             SearchTeamComment[]
+  searchTeamVisitsShared         SearchTeamVisit[]
 
   @@index([name])
   @@index([createdAt(sort: Desc)])
@@ -184,16 +578,18 @@ model Conversation {
 }
 
 model Message {
-  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  conversationId String       @db.Uuid
-  senderId       String
-  body           String       @db.VarChar(2000)
-  createdAt      DateTime     @default(now()) @db.Timestamptz(3)
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  id               String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversationId   String                  @db.Uuid
+  senderId         String
+  body             String                  @db.VarChar(2000)
+  moderationStatus ContentModerationStatus @default(VISIBLE)
+  createdAt        DateTime                @default(now()) @db.Timestamptz(3)
+  conversation     Conversation            @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender           User                    @relation(fields: [senderId], references: [id], onDelete: Cascade)
 
   @@index([conversationId, createdAt, id])
   @@index([senderId])
+  @@index([moderationStatus, conversationId, createdAt])
 }
 
 model City {
@@ -256,66 +652,268 @@ model CommunityMember {
 }
 
 model CommunityMessage {
-  id          String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  communityId String
-  senderId    String
-  replyToId   String?            @db.Uuid
-  body        String             @db.VarChar(2000)
-  createdAt   DateTime           @default(now()) @db.Timestamptz(3)
-  community   Community          @relation(fields: [communityId], references: [id], onDelete: Cascade)
-  sender      User               @relation(fields: [senderId], references: [id], onDelete: Cascade)
-  replyTo     CommunityMessage?  @relation("CommunityMessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
-  replies     CommunityMessage[] @relation("CommunityMessageReplies")
+  id               String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  communityId      String
+  senderId         String
+  replyToId        String?                 @db.Uuid
+  body             String                  @db.VarChar(2000)
+  moderationStatus ContentModerationStatus @default(VISIBLE)
+  createdAt        DateTime                @default(now()) @db.Timestamptz(3)
+  community        Community               @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  sender           User                    @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  replyTo          CommunityMessage?       @relation("CommunityMessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies          CommunityMessage[]      @relation("CommunityMessageReplies")
 
   @@index([communityId, createdAt, id])
   @@index([senderId])
   @@index([replyToId])
+  @@index([moderationStatus, communityId, createdAt])
 }
 
 model Post {
-  id                String             @id @default(cuid())
-  type              PostType
-  status            PostStatus         @default(ACTIVE)
-  title             String             @db.VarChar(140)
-  description       String             @db.VarChar(2000)
-  monthlyAmountMin  Int?
-  monthlyAmountMax  Int?
-  securityDeposit   Int?
-  maintenanceAmount Int?
-  currency          String             @default("INR") @db.Char(3)
-  moveInDate        DateTime?          @db.Date
-  genderPreference  GenderPreference   @default(ANY)
-  propertyType      PropertyType?
-  roomType          RoomType?
-  furnishingStatus  FurnishingStatus?
-  preferredOccupant PreferredOccupant?
-  attachedBathroom  Boolean?
-  parkingType       ParkingType?
-  bedrooms          Int?
-  bathrooms         Int?
-  currentOccupants  Int?
-  availableSpots    Int?
-  mealsIncluded     Boolean?
-  amenities         String[]           @default([])
-  tags              String[]           @default([])
-  imagePaths        String[]           @default([])
-  authorId          String
-  communityId       String
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  publishedAt       DateTime?
-  author            User               @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  community         Community          @relation(fields: [communityId], references: [id], onDelete: Cascade)
-  savedBy           SavedPost[]
+  id                 String                    @id @default(cuid())
+  type               PostType
+  status             PostStatus                @default(ACTIVE)
+  availabilityStatus ListingAvailabilityStatus @default(AVAILABLE)
+  title              String                    @db.VarChar(140)
+  description        String                    @db.VarChar(2000)
+  monthlyAmountMin   Int?
+  monthlyAmountMax   Int?
+  securityDeposit    Int?
+  maintenanceAmount  Int?
+  currency           String                    @default("INR") @db.Char(3)
+  moveInDate         DateTime?                 @db.Date
+  genderPreference   GenderPreference          @default(ANY)
+  propertyType       PropertyType?
+  roomType           RoomType?
+  furnishingStatus   FurnishingStatus?
+  preferredOccupant  PreferredOccupant?
+  attachedBathroom   Boolean?
+  parkingType        ParkingType?
+  latitude           Decimal?                  @db.Decimal(9, 6)
+  longitude          Decimal?                  @db.Decimal(9, 6)
+  locationPrecision  LocationPrecision?
+  bedrooms           Int?
+  bathrooms          Int?
+  currentOccupants   Int?
+  availableSpots     Int?
+  mealsIncluded      Boolean?
+  amenities          String[]                  @default([])
+  tags               String[]                  @default([])
+  imagePaths         String[]                  @default([])
+  authorId           String
+  communityId        String
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+  publishedAt        DateTime?
+  lastConfirmedAt    DateTime                  @default(now()) @db.Timestamptz(3)
+  moderationStatus   ContentModerationStatus   @default(VISIBLE)
+  author             User                      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  community          Community                 @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  savedBy            SavedPost[]
+  recentViews        RecentView[]
+  visitRequests      VisitRequest[]
+  verificationChecks VerificationCheck[]
+  interestActivity   InterestActivity[]
+  moveInChecklists   MoveInChecklist[]
+  documentSpaces     FinalizedDocumentSpace[]
+  realityFeedback    ListingRealityFeedback[]
+  searchTeamListings SearchTeamListing[]
 
   @@index([authorId, createdAt])
   @@index([communityId, type, status, createdAt])
   @@index([communityId, status, publishedAt(sort: Desc), id])
+  @@index([communityId, status, availabilityStatus, lastConfirmedAt(sort: Desc)])
   @@index([communityId, status, genderPreference])
   @@index([communityId, status, monthlyAmountMin])
   @@index([communityId, status, monthlyAmountMax])
   @@index([communityId, status, moveInDate])
+  @@index([communityId, latitude, longitude])
   @@index([moveInDate])
+  @@index([moderationStatus, status, publishedAt(sort: Desc)])
+}
+
+model VisitRequest {
+  id               String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  postId           String
+  requesterId      String
+  ownerId          String
+  status           VisitRequestStatus   @default(PENDING)
+  calendarRevision Int                  @default(0)
+  requestedAt      DateTime             @db.Timestamptz(3)
+  proposedAt       DateTime?            @db.Timestamptz(3)
+  scheduledAt      DateTime?            @db.Timestamptz(3)
+  note             String?              @db.VarChar(500)
+  respondedAt      DateTime?            @db.Timestamptz(3)
+  createdAt        DateTime             @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime             @updatedAt @db.Timestamptz(3)
+  post             Post                 @relation(fields: [postId], references: [id], onDelete: Cascade)
+  requester        User                 @relation("VisitRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  owner            User                 @relation("VisitOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  outcomes         VisitOutcome[]
+  changes          VisitChange[]
+  slotPreference   VisitSlotPreference?
+  attendances      VisitAttendance[]
+  feedback         VisitFeedback[]
+  realityFeedback  ListingRealityFeedback?
+  searchTeamVisits SearchTeamVisit[]
+  moveInChecklists MoveInChecklist[]
+
+  @@index([requesterId, requestedAt(sort: Desc)])
+  @@index([ownerId, requestedAt(sort: Desc)])
+  @@index([ownerId, status, scheduledAt])
+  @@index([postId, status, requestedAt])
+}
+
+model VisitAvailabilityRule {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ownerId     String
+  weekday     Int
+  startMinute Int
+  endMinute   Int
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+  owner       User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@unique([ownerId, weekday])
+  @@index([ownerId, weekday])
+}
+
+model VisitAvailabilityBlock {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ownerId   String
+  startsAt  DateTime @db.Timestamptz(3)
+  endsAt    DateTime @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId, startsAt, endsAt])
+}
+
+model VisitSlotPreference {
+  id                   String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  visitId              String       @unique @db.Uuid
+  requesterId          String
+  preferredWeekdays    Int[]        @default([])
+  preferredStartMinute Int?
+  preferredEndMinute   Int?
+  createdAt            DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime     @updatedAt @db.Timestamptz(3)
+  visit                VisitRequest @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  requester            User         @relation(fields: [requesterId], references: [id], onDelete: Cascade)
+
+  @@index([requesterId, updatedAt(sort: Desc)])
+}
+
+model VisitChange {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  visitId        String       @db.Uuid
+  revision       Int
+  actorRole      String       @db.VarChar(16)
+  previousStatus String       @db.VarChar(16)
+  status         String       @db.VarChar(16)
+  previousTime   DateTime?    @db.Timestamptz(3)
+  scheduledAt    DateTime?    @db.Timestamptz(3)
+  createdAt      DateTime     @default(now()) @db.Timestamptz(3)
+  visit          VisitRequest @relation(fields: [visitId], references: [id], onDelete: Cascade)
+
+  @@unique([visitId, revision])
+}
+
+model VisitOutcome {
+  id          String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  visitId     String           @db.Uuid
+  userId      String
+  outcome     VisitOutcomeType
+  privateNote String?          @db.VarChar(500)
+  createdAt   DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime         @updatedAt @db.Timestamptz(3)
+  visit       VisitRequest     @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([visitId, userId])
+  @@index([userId, outcome, updatedAt(sort: Desc)])
+}
+
+model VisitAttendance {
+  id           String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  visitId      String                       @db.Uuid
+  userId       String
+  checkedInAt  DateTime?                    @db.Timestamptz(3)
+  confirmation VisitAttendanceConfirmation?
+  confirmedAt  DateTime?                    @db.Timestamptz(3)
+  createdAt    DateTime                     @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime                     @updatedAt @db.Timestamptz(3)
+  visit        VisitRequest                 @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  user         User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([visitId, userId])
+  @@index([userId, updatedAt(sort: Desc)])
+}
+
+model VisitFeedback {
+  id                   String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  visitId              String       @db.Uuid
+  userId               String
+  propertyAccuracy     Int          @db.SmallInt
+  cleanliness          Int          @db.SmallInt
+  communicationQuality Int          @db.SmallInt
+  safetyComfort        Int          @db.SmallInt
+  overallExperience    Int          @db.SmallInt
+  privateNote          String?      @db.VarChar(1000)
+  createdAt            DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime     @updatedAt @db.Timestamptz(3)
+  visit                VisitRequest @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  user                 User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([visitId, userId])
+  @@index([userId, updatedAt(sort: Desc)])
+}
+
+model ListingRealityFeedback {
+  id                  String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  visitId             String       @unique @db.Uuid
+  postId              String
+  reviewerId          String
+  photosAccuracy      Int          @db.SmallInt
+  costAccuracy        Int          @db.SmallInt
+  amenitiesAccuracy   Int          @db.SmallInt
+  conditionAccuracy   Int          @db.SmallInt
+  locationAccuracy    Int          @db.SmallInt
+  descriptionAccuracy Int          @db.SmallInt
+  privateNote         String?      @db.VarChar(1000)
+  createdAt           DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime     @updatedAt @db.Timestamptz(3)
+  visit               VisitRequest @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  post                Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
+  reviewer            User         @relation(fields: [reviewerId], references: [id], onDelete: Cascade)
+
+  @@index([postId, createdAt(sort: Desc)])
+  @@index([reviewerId, updatedAt(sort: Desc)])
+}
+
+model VerificationCheck {
+  id                String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  kind              VerificationKind
+  status            VerificationStatus @default(PENDING)
+  method            VerificationMethod
+  userId            String?
+  postId            String?
+  verifiedAt        DateTime?          @db.Timestamptz(3)
+  expiresAt         DateTime?          @db.Timestamptz(3)
+  providerReference String?            @db.VarChar(200)
+  privateMetadata   Json?
+  createdAt         DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime           @updatedAt @db.Timestamptz(3)
+  user              User?              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post              Post?              @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, kind])
+  @@unique([postId, kind])
+  @@index([userId, status, kind])
+  @@index([postId, status, kind])
+  @@index([status, expiresAt])
 }
 
 model SavedPost {
@@ -327,6 +925,117 @@ model SavedPost {
 
   @@id([userId, postId])
   @@index([postId])
+}
+
+model SearchTeam {
+  id        String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String              @db.VarChar(80)
+  ownerId   String
+  createdAt DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime            @updatedAt @db.Timestamptz(3)
+  owner     User                @relation("SearchTeamOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members   SearchTeamMember[]
+  invites   SearchTeamInvite[]
+  listings  SearchTeamListing[]
+
+  @@index([ownerId, updatedAt(sort: Desc)])
+}
+
+model SearchTeamMember {
+  teamId   String         @db.Uuid
+  userId   String
+  role     SearchTeamRole @default(MEMBER)
+  joinedAt DateTime       @default(now()) @db.Timestamptz(3)
+  team     SearchTeam     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([teamId, userId])
+  @@index([userId, joinedAt(sort: Desc)])
+}
+
+model SearchTeamInvite {
+  id          String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  teamId      String                 @db.Uuid
+  invitedById String
+  recipientId String
+  status      SearchTeamInviteStatus @default(PENDING)
+  expiresAt   DateTime               @db.Timestamptz(3)
+  acceptedAt  DateTime?              @db.Timestamptz(3)
+  createdAt   DateTime               @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime               @updatedAt @db.Timestamptz(3)
+  team        SearchTeam             @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  invitedBy   User                   @relation("SearchTeamInviteSender", fields: [invitedById], references: [id], onDelete: Cascade)
+  recipient   User                   @relation("SearchTeamInviteRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, recipientId])
+  @@index([recipientId, status, expiresAt])
+  @@index([invitedById, updatedAt(sort: Desc)])
+  @@index([teamId, status, updatedAt(sort: Desc)])
+}
+
+model SearchTeamListing {
+  teamId    String                  @db.Uuid
+  postId    String
+  addedById String
+  status    SearchTeamListingStatus @default(CONSIDERING)
+  createdAt DateTime                @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime                @updatedAt @db.Timestamptz(3)
+  team      SearchTeam              @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  post      Post                    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  addedBy   User                    @relation(fields: [addedById], references: [id], onDelete: Cascade)
+  votes     SearchTeamVote[]
+  comments  SearchTeamComment[]
+  visits    SearchTeamVisit[]
+
+  @@id([teamId, postId])
+  @@index([postId])
+  @@index([teamId, status, updatedAt(sort: Desc)])
+  @@index([addedById, createdAt(sort: Desc)])
+}
+
+model SearchTeamVote {
+  teamId   String               @db.Uuid
+  postId   String
+  userId   String
+  choice   SearchTeamVoteChoice
+  createdAt DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime            @updatedAt @db.Timestamptz(3)
+  listing  SearchTeamListing    @relation(fields: [teamId, postId], references: [teamId, postId], onDelete: Cascade)
+  user     User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([teamId, postId, userId])
+  @@index([userId, updatedAt(sort: Desc)])
+}
+
+model SearchTeamComment {
+  id        String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  teamId    String            @db.Uuid
+  postId    String
+  authorId  String
+  body      String            @db.VarChar(1000)
+  createdAt DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime          @updatedAt @db.Timestamptz(3)
+  listing   SearchTeamListing @relation(fields: [teamId, postId], references: [teamId, postId], onDelete: Cascade)
+  author    User              @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([teamId, postId, createdAt])
+  @@index([authorId, createdAt(sort: Desc)])
+}
+
+model SearchTeamVisit {
+  teamId    String            @db.Uuid
+  visitId   String            @db.Uuid
+  postId    String
+  sharedById String
+  createdAt DateTime          @default(now()) @db.Timestamptz(3)
+  listing   SearchTeamListing @relation(fields: [teamId, postId], references: [teamId, postId], onDelete: Cascade)
+  visit     VisitRequest      @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  sharedBy  User              @relation(fields: [sharedById], references: [id], onDelete: Cascade)
+
+  @@id([teamId, visitId])
+  @@index([visitId])
+  @@index([teamId, postId, createdAt(sort: Desc)])
+  @@index([sharedById, createdAt(sort: Desc)])
 }
 
 model SavedSearch {
@@ -343,6 +1052,436 @@ model SavedSearch {
   @@index([userId, createdAt(sort: Desc)])
 }
 
+model ShortlistedProfile {
+  userId       String
+  targetUserId String
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+  user         User     @relation("ProfileShortlistOwner", fields: [userId], references: [id], onDelete: Cascade)
+  targetUser   User     @relation("ProfileShortlistTarget", fields: [targetUserId], references: [id], onDelete: Cascade)
+
+  @@id([userId, targetUserId])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([targetUserId])
+}
+
+model InterestActivity {
+  id              String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String
+  targetType      InterestTargetType
+  postId          String?
+  targetUserId    String?
+  stage           InterestStage
+  createdAt       DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime           @updatedAt @db.Timestamptz(3)
+  user            User               @relation("InterestActivityOwner", fields: [userId], references: [id], onDelete: Cascade)
+  post            Post?              @relation(fields: [postId], references: [id], onDelete: Cascade)
+  targetUser      User?              @relation("InterestActivityTargetUser", fields: [targetUserId], references: [id], onDelete: Cascade)
+  moveInChecklist MoveInChecklist?
+
+  @@unique([userId, postId])
+  @@unique([userId, targetUserId])
+  @@index([userId, targetType, stage, updatedAt(sort: Desc)])
+  @@index([postId])
+  @@index([targetUserId])
+}
+
+model MoveInChecklist {
+  id           String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId       String
+  activityId   String?               @unique @db.Uuid
+  visitId      String?               @db.Uuid
+  targetType   InterestTargetType
+  postId       String?
+  targetUserId String?
+  createdAt    DateTime              @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime              @updatedAt @db.Timestamptz(3)
+  user         User                  @relation("MoveInChecklistOwner", fields: [userId], references: [id], onDelete: Cascade)
+  activity     InterestActivity?     @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  visit        VisitRequest?         @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  post         Post?                 @relation(fields: [postId], references: [id], onDelete: Cascade)
+  targetUser   User?                 @relation("MoveInChecklistTargetUser", fields: [targetUserId], references: [id], onDelete: Cascade)
+  items        MoveInChecklistItem[]
+
+  @@unique([userId, visitId])
+  @@unique([userId, postId])
+  @@unique([userId, targetUserId])
+  @@index([userId, updatedAt(sort: Desc)])
+  @@index([visitId])
+  @@index([postId])
+  @@index([targetUserId])
+}
+
+model MoveInChecklistItem {
+  id            String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  checklistId   String                  @db.Uuid
+  kind          MoveInChecklistItemKind
+  label         String                  @db.VarChar(100)
+  privateDetail String?                 @db.VarChar(500)
+  isCompleted   Boolean                 @default(false)
+  completedAt   DateTime?               @db.Timestamptz(3)
+  sortOrder     Int                     @db.SmallInt
+  createdAt     DateTime                @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime                @updatedAt @db.Timestamptz(3)
+  checklist     MoveInChecklist         @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+
+  @@unique([checklistId, kind])
+  @@index([checklistId, sortOrder])
+}
+
+model FinalizedDocumentSpace {
+  id               String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  targetType       InterestTargetType
+  postId           String?
+  targetUserId     String?
+  participantOneId String
+  participantTwoId String
+  status           FinalizedMatchStatus       @default(ACTIVE)
+  statusBeforeClose FinalizedMatchStatus?
+  closureReason    MatchClosureReason?
+  completedAt      DateTime?                  @db.Timestamptz(3)
+  closedAt         DateTime?                  @db.Timestamptz(3)
+  reopenedAt       DateTime?                  @db.Timestamptz(3)
+  closedById       String?
+  createdAt        DateTime                  @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime                  @updatedAt @db.Timestamptz(3)
+  post             Post?                     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  targetUser       User?                     @relation("DocumentSpaceFlatmateTarget", fields: [targetUserId], references: [id], onDelete: Cascade)
+  participantOne   User                      @relation("DocumentSpaceParticipantOne", fields: [participantOneId], references: [id], onDelete: Cascade)
+  participantTwo   User                      @relation("DocumentSpaceParticipantTwo", fields: [participantTwoId], references: [id], onDelete: Cascade)
+  closedBy         User?                     @relation("DocumentSpaceClosedBy", fields: [closedById], references: [id], onDelete: SetNull)
+  documents        SharedDocument[]
+  milestones       FinalizedMatchMilestone[]
+  statusChanges    FinalizedMatchStatusChange[]
+  household        Household?
+
+  @@unique([postId, participantOneId, participantTwoId])
+  @@unique([targetUserId, participantOneId, participantTwoId])
+  @@index([participantOneId, updatedAt(sort: Desc)])
+  @@index([participantTwoId, updatedAt(sort: Desc)])
+  @@index([postId])
+  @@index([targetUserId])
+  @@index([status, updatedAt(sort: Desc)])
+  @@index([closedById])
+}
+
+model SharedDocument {
+  id                 String                          @id @db.Uuid
+  spaceId            String                          @db.Uuid
+  uploaderId         String
+  seriesId           String                          @db.Uuid
+  versionNumber      Int                             @default(1)
+  isCurrent          Boolean                         @default(true)
+  replacesDocumentId String?                         @db.Uuid
+  category           SharedDocumentCategory
+  objectPath         String                          @unique @db.VarChar(500)
+  originalName       String                          @db.VarChar(180)
+  mimeType           String                          @db.VarChar(80)
+  sizeBytes          Int
+  revokedAt          DateTime?                       @db.Timestamptz(3)
+  supersededAt       DateTime?                       @db.Timestamptz(3)
+  createdAt          DateTime                        @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime                        @updatedAt @db.Timestamptz(3)
+  space              FinalizedDocumentSpace          @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  uploader           User                            @relation("SharedDocumentUploader", fields: [uploaderId], references: [id], onDelete: Cascade)
+  replacesDocument   SharedDocument?                 @relation("SharedDocumentVersions", fields: [replacesDocumentId], references: [id], onDelete: NoAction)
+  revisions          SharedDocument[]                @relation("SharedDocumentVersions")
+  acknowledgements   SharedDocumentAcknowledgement[]
+
+  @@unique([seriesId, versionNumber])
+  @@index([spaceId, revokedAt, createdAt(sort: Desc)])
+  @@index([uploaderId, createdAt(sort: Desc)])
+  @@index([seriesId, isCurrent])
+  @@index([replacesDocumentId])
+}
+
+model SharedDocumentAcknowledgement {
+  id         String                        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  documentId String                        @db.Uuid
+  userId     String
+  status     DocumentAcknowledgementStatus
+  createdAt  DateTime                      @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime                      @updatedAt @db.Timestamptz(3)
+  document   SharedDocument                @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user       User                          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, userId])
+  @@index([userId, updatedAt(sort: Desc)])
+}
+
+model FinalizedMatchMilestone {
+  id          String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  spaceId     String                   @db.Uuid
+  userId      String
+  kind        FinalizedMilestoneKind
+  status      FinalizedMilestoneStatus @default(PENDING)
+  completedAt DateTime?                @db.Timestamptz(3)
+  createdAt   DateTime                 @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime                 @updatedAt @db.Timestamptz(3)
+  space       FinalizedDocumentSpace   @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  user        User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([spaceId, userId, kind])
+  @@index([spaceId, kind])
+  @@index([userId, status, updatedAt(sort: Desc)])
+}
+
+model FinalizedMatchStatusChange {
+  id         String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  spaceId    String               @db.Uuid
+  actorId    String?
+  fromStatus FinalizedMatchStatus
+  toStatus   FinalizedMatchStatus
+  reason     MatchClosureReason?
+  createdAt  DateTime             @default(now()) @db.Timestamptz(3)
+  space      FinalizedDocumentSpace @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  actor      User?                @relation("FinalizedMatchStatusActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([spaceId, createdAt(sort: Desc)])
+  @@index([actorId, createdAt(sort: Desc)])
+}
+
+model Household {
+  id               String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  finalizedSpaceId String                  @unique @db.Uuid
+  status           HouseholdStatus         @default(ACTIVE)
+  archiveReason    HouseholdArchiveReason?
+  archivedAt       DateTime?               @db.Timestamptz(3)
+  archivedById     String?
+  createdAt        DateTime                @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime                @updatedAt @db.Timestamptz(3)
+  finalizedSpace   FinalizedDocumentSpace  @relation(fields: [finalizedSpaceId], references: [id], onDelete: Cascade)
+  archivedBy       User?                   @relation("HouseholdArchivedBy", fields: [archivedById], references: [id], onDelete: SetNull)
+  members          HouseholdMember[]
+  items            HouseholdItem[]
+  expenses         HouseholdExpense[]
+  recurringExpenseTemplates HouseholdRecurringExpenseTemplate[]
+  monthlyBudgets HouseholdMonthlyBudget[]
+
+  @@index([status, updatedAt(sort: Desc)])
+  @@index([archivedById])
+}
+
+model HouseholdMember {
+  id          String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  householdId String                @db.Uuid
+  userId      String
+  status      HouseholdMemberStatus @default(ACTIVE)
+  joinedAt    DateTime              @default(now()) @db.Timestamptz(3)
+  leftAt      DateTime?             @db.Timestamptz(3)
+  updatedAt   DateTime              @updatedAt @db.Timestamptz(3)
+  household   Household             @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  user        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([householdId, userId])
+  @@index([userId, status, updatedAt(sort: Desc)])
+  @@index([householdId, status])
+}
+
+model HouseholdItem {
+  id           String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  householdId  String              @db.Uuid
+  createdById  String
+  assignedToId String?
+  kind         HouseholdItemKind
+  title        String              @db.VarChar(120)
+  detail       String?             @db.VarChar(500)
+  amountMinor  Int?
+  dueDate      DateTime?           @db.Date
+  recurrence   HouseholdRecurrence @default(NONE)
+  isCompleted  Boolean             @default(false)
+  completedAt  DateTime?           @db.Timestamptz(3)
+  createdAt    DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime            @updatedAt @db.Timestamptz(3)
+  household    Household           @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  createdBy    User                @relation("HouseholdItemCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  assignedTo   User?               @relation("HouseholdItemAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  @@index([householdId, isCompleted, dueDate])
+  @@index([createdById, updatedAt(sort: Desc)])
+  @@index([assignedToId, isCompleted, dueDate])
+}
+
+model HouseholdExpense {
+  id          String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  householdId String                      @db.Uuid
+  createdById String
+  paidById    String
+  category    HouseholdExpenseCategory
+  title       String                      @db.VarChar(120)
+  description String?                     @db.VarChar(500)
+  amountMinor Int
+  expenseDate DateTime                    @db.Date
+  splitMethod HouseholdExpenseSplitMethod
+  status      HouseholdExpenseStatus      @default(OUTSTANDING)
+  recurringTemplateId String?              @db.Uuid
+  billingCycleStart  DateTime?             @db.Date
+  dueDate            DateTime?             @db.Date
+  createdAt   DateTime                    @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime                    @updatedAt @db.Timestamptz(3)
+  household   Household                   @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  createdBy   User                        @relation("HouseholdExpenseCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  paidBy      User                        @relation("HouseholdExpensePayer", fields: [paidById], references: [id], onDelete: Restrict)
+  shares      HouseholdExpenseShare[]
+  recurringTemplate HouseholdRecurringExpenseTemplate? @relation(fields: [recurringTemplateId], references: [id], onDelete: Restrict)
+
+  @@unique([recurringTemplateId, billingCycleStart])
+  @@index([householdId, expenseDate(sort: Desc), createdAt(sort: Desc)])
+  @@index([paidById, status, expenseDate(sort: Desc)])
+  @@index([createdById, createdAt(sort: Desc)])
+  @@index([householdId, dueDate])
+}
+
+model HouseholdExpenseShare {
+  id                 String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  expenseId          String                       @db.Uuid
+  memberId           String
+  creditorId         String?
+  shareAmountMinor   Int
+  settledAmountMinor Int                          @default(0)
+  status             HouseholdExpenseShareStatus @default(OUTSTANDING)
+  createdAt          DateTime                     @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime                     @updatedAt @db.Timestamptz(3)
+  expense            HouseholdExpense             @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  member             User                         @relation("HouseholdExpenseShareMember", fields: [memberId], references: [id], onDelete: Cascade)
+  creditor           User?                        @relation("HouseholdExpenseShareCreditor", fields: [creditorId], references: [id], onDelete: Restrict)
+  settlements        HouseholdSettlement[]
+
+  @@unique([expenseId, memberId])
+  @@index([memberId, status, updatedAt(sort: Desc)])
+  @@index([creditorId, status, updatedAt(sort: Desc)])
+  @@index([expenseId, status])
+}
+
+model HouseholdSettlement {
+  id             String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  expenseShareId String                    @db.Uuid
+  fromUserId     String
+  toUserId       String
+  amountMinor    Int
+  status         HouseholdSettlementStatus @default(PENDING)
+  note           String?                   @db.VarChar(240)
+  recordedById   String
+  confirmedById  String?
+  confirmedAt    DateTime?                 @db.Timestamptz(3)
+  cancelledAt    DateTime?                 @db.Timestamptz(3)
+  createdAt      DateTime                  @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime                  @updatedAt @db.Timestamptz(3)
+  expenseShare   HouseholdExpenseShare     @relation(fields: [expenseShareId], references: [id], onDelete: Cascade)
+  fromUser       User                      @relation("HouseholdSettlementFrom", fields: [fromUserId], references: [id], onDelete: Restrict)
+  toUser         User                      @relation("HouseholdSettlementTo", fields: [toUserId], references: [id], onDelete: Restrict)
+  recordedBy     User                      @relation("HouseholdSettlementRecorder", fields: [recordedById], references: [id], onDelete: Restrict)
+  confirmedBy    User?                     @relation("HouseholdSettlementConfirmer", fields: [confirmedById], references: [id], onDelete: Restrict)
+
+  @@index([expenseShareId, createdAt(sort: Desc)])
+  @@index([fromUserId, status, createdAt(sort: Desc)])
+  @@index([toUserId, status, createdAt(sort: Desc)])
+  @@index([recordedById, createdAt(sort: Desc)])
+  @@index([confirmedById, confirmedAt(sort: Desc)])
+}
+
+model HouseholdRecurringExpenseTemplate {
+  id          String                           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  householdId String                           @db.Uuid
+  createdById String
+  paidById    String
+  category    HouseholdExpenseCategory
+  title       String                           @db.VarChar(120)
+  description String?                          @db.VarChar(500)
+  amountMinor Int
+  splitMethod HouseholdExpenseSplitMethod
+  firstDueDate DateTime                        @db.Date
+  dueDay      Int
+  endDate     DateTime?                        @db.Date
+  status      HouseholdRecurringTemplateStatus @default(ACTIVE)
+  pausedAt    DateTime?                        @db.Timestamptz(3)
+  endedAt     DateTime?                        @db.Timestamptz(3)
+  createdAt   DateTime                         @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime                         @updatedAt @db.Timestamptz(3)
+  household   Household                        @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  createdBy   User                             @relation("HouseholdRecurringCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  paidBy      User                             @relation("HouseholdRecurringPayer", fields: [paidById], references: [id], onDelete: Restrict)
+  participants HouseholdRecurringExpenseParticipant[]
+  generatedExpenses HouseholdExpense[]
+
+  @@index([householdId, status, firstDueDate])
+  @@index([paidById, status, updatedAt(sort: Desc)])
+  @@index([createdById, updatedAt(sort: Desc)])
+}
+
+model HouseholdRecurringExpenseParticipant {
+  id                String                            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  templateId        String                            @db.Uuid
+  memberId          String
+  customAmountMinor Int?
+  createdAt         DateTime                          @default(now()) @db.Timestamptz(3)
+  template          HouseholdRecurringExpenseTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  member            User                              @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([templateId, memberId])
+  @@index([memberId, createdAt(sort: Desc)])
+}
+
+model HouseholdMonthlyBudget {
+  id          String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  householdId String                  @db.Uuid
+  month       DateTime                @db.Date
+  category    HouseholdBudgetCategory
+  amountMinor Int
+  createdById String
+  updatedById String
+  createdAt   DateTime                @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime                @updatedAt @db.Timestamptz(3)
+  household   Household               @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  createdBy   User                    @relation("HouseholdBudgetCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy   User                    @relation("HouseholdBudgetUpdater", fields: [updatedById], references: [id], onDelete: Restrict)
+
+  @@unique([householdId, month, category])
+  @@index([householdId, month])
+  @@index([createdById, updatedAt(sort: Desc)])
+  @@index([updatedById, updatedAt(sort: Desc)])
+}
+
+model Reminder {
+  id              String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String
+  reminderKey     String             @db.VarChar(240)
+  kind            ReminderKind
+  targetType      ReminderTargetType
+  targetId        String             @db.VarChar(128)
+  title           String             @db.VarChar(140)
+  description     String?            @db.VarChar(300)
+  href            String             @db.VarChar(500)
+  dueAt           DateTime           @db.Timestamptz(3)
+  sourceUpdatedAt DateTime           @db.Timestamptz(3)
+  snoozedUntil    DateTime?          @db.Timestamptz(3)
+  dismissedAt     DateTime?          @db.Timestamptz(3)
+  inactiveAt      DateTime?          @db.Timestamptz(3)
+  createdAt       DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime           @updatedAt @db.Timestamptz(3)
+  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, reminderKey])
+  @@index([userId, inactiveAt, dismissedAt, snoozedUntil, dueAt])
+  @@index([userId, kind, updatedAt(sort: Desc)])
+}
+
+model RecentView {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  viewerId     String
+  postId       String?
+  viewedUserId String?
+  viewedAt     DateTime @default(now()) @db.Timestamptz(3)
+  viewer       User     @relation("RecentViewViewer", fields: [viewerId], references: [id], onDelete: Cascade)
+  post         Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  viewedUser   User?    @relation("RecentViewTargetUser", fields: [viewedUserId], references: [id], onDelete: Cascade)
+
+  @@unique([viewerId, postId])
+  @@unique([viewerId, viewedUserId])
+  @@index([viewerId, viewedAt(sort: Desc)])
+  @@index([postId])
+  @@index([viewedUserId])
+}
+
 model UserPreferences {
   id                  String                  @id @default(cuid())
   userId              String                  @unique
@@ -356,6 +1495,10 @@ model UserPreferences {
   cleanliness         CleanlinessLevel?
   pets                PetPreference?
   occupationStatus    OccupationStatus?
+  commuteDestination  String?                 @db.VarChar(120)
+  commuteLatitude     Decimal?                @db.Decimal(9, 6)
+  commuteLongitude    Decimal?                @db.Decimal(9, 6)
+  preferredCommuteKm  Int?
   createdAt           DateTime                @default(now())
   updatedAt           DateTime                @updatedAt
   user                User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -370,6 +1513,7 @@ model UserPreferences {
   @@index([cleanliness])
   @@index([pets])
   @@index([occupationStatus])
+  @@index([preferredCommuteKm])
 }
 
 model UserPreferredLocality {
@@ -406,11 +1550,157 @@ model Report {
   details        String?          @db.VarChar(500)
   createdAt      DateTime         @default(now()) @db.Timestamptz(3)
   reporter       User             @relation("ReportReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  safetyFlag     SafetyFlag?
 
   @@unique([reporterId, targetType, targetId])
   @@index([reporterId, createdAt(sort: Desc)])
   @@index([reportedUserId, createdAt(sort: Desc)])
   @@index([targetType, targetId])
+}
+
+model SafetyActivity {
+  id                 String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  actorId            String
+  scope              SafetyActivityScope
+  targetType         ReportTargetType
+  targetId           String              @db.VarChar(128)
+  contentFingerprint String?             @db.Char(32)
+  contactFingerprint String?             @db.Char(32)
+  createdAt          DateTime            @default(now()) @db.Timestamptz(3)
+  actor              User                @relation(fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@index([actorId, scope, createdAt(sort: Desc)])
+  @@index([actorId, contentFingerprint, createdAt(sort: Desc)])
+  @@index([actorId, contactFingerprint, createdAt(sort: Desc)])
+}
+
+model SafetyFlag {
+  id              String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  actorId         String
+  targetType      ReportTargetType
+  targetId        String              @db.VarChar(128)
+  category        SafetyFlagCategory
+  severity        SafetyFlagSeverity  @default(LOW)
+  status          SafetyFlagStatus    @default(OPEN)
+  scope           SafetyActivityScope
+  restrictedUntil DateTime?           @db.Timestamptz(3)
+  relatedReportId String?             @unique @db.Uuid
+  dedupeKey       String              @unique @db.VarChar(200)
+  privateDetails  Json?
+  createdAt       DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime            @updatedAt @db.Timestamptz(3)
+  actor           User                @relation(fields: [actorId], references: [id], onDelete: Cascade)
+  relatedReport   Report?             @relation(fields: [relatedReportId], references: [id], onDelete: SetNull)
+
+  @@index([actorId, status, restrictedUntil])
+  @@index([targetType, targetId, status])
+  @@index([category, status, createdAt(sort: Desc)])
+}
+
+model ModeratorMembership {
+  userId              String        @id
+  role                ModeratorRole
+  grantedByAuthUserId String?       @db.Uuid
+  createdAt           DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime      @updatedAt @db.Timestamptz(3)
+  user                User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([role, createdAt])
+}
+
+model UserModerationState {
+  userId          String               @id
+  status          UserModerationStatus
+  restrictedUntil DateTime?            @db.Timestamptz(3)
+  privateReason   String               @db.VarChar(500)
+  updatedById     String
+  createdAt       DateTime             @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime             @updatedAt @db.Timestamptz(3)
+  user            User                 @relation("ModeratedUser", fields: [userId], references: [id], onDelete: Cascade)
+  updatedBy       User                 @relation("ModerationStateUpdater", fields: [updatedById], references: [id], onDelete: Restrict)
+
+  @@index([status, restrictedUntil])
+  @@index([updatedById, updatedAt(sort: Desc)])
+}
+
+model ModerationReview {
+  id           String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  queueType    ModerationQueueType
+  queueId      String                 @db.VarChar(128)
+  status       ModerationReviewStatus
+  reviewedById String
+  createdAt    DateTime               @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime               @updatedAt @db.Timestamptz(3)
+  reviewedBy   User                   @relation(fields: [reviewedById], references: [id], onDelete: Restrict)
+
+  @@unique([queueType, queueId])
+  @@index([reviewedById, updatedAt(sort: Desc)])
+}
+
+model ModerationAuditLog {
+  id             String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  moderatorId    String
+  action         ModerationActionType
+  queueType      ModerationQueueType
+  queueId        String               @db.VarChar(128)
+  subjectUserId  String
+  targetType     String               @db.VarChar(40)
+  targetId       String               @db.VarChar(128)
+  reason         String               @db.VarChar(500)
+  privateDetails Json?
+  createdAt      DateTime             @default(now()) @db.Timestamptz(3)
+  moderator      User                 @relation("ModeratorAudit", fields: [moderatorId], references: [id], onDelete: Restrict)
+  subjectUser    User                 @relation("ModerationSubject", fields: [subjectUserId], references: [id], onDelete: Restrict)
+
+  @@index([moderatorId, createdAt(sort: Desc)])
+  @@index([subjectUserId, createdAt(sort: Desc)])
+  @@index([queueType, queueId, createdAt(sort: Desc)])
+}
+
+model SupportCase {
+  id             String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId         String
+  category       SupportCaseCategory
+  subject        String                    @db.VarChar(120)
+  description    String                    @db.VarChar(2000)
+  reference      String?                   @db.VarChar(200)
+  status         SupportCaseStatus         @default(OPEN)
+  lastResponseAt DateTime?                 @db.Timestamptz(3)
+  createdAt      DateTime                  @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime                  @updatedAt @db.Timestamptz(3)
+  user           User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages       SupportCaseMessage[]
+  internalNotes  SupportCaseInternalNote[]
+
+  @@index([userId, status, updatedAt(sort: Desc)])
+  @@index([status, updatedAt(sort: Desc)])
+}
+
+model SupportCaseMessage {
+  id         String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  caseId     String             @db.Uuid
+  senderId   String
+  senderRole SupportMessageRole
+  body       String             @db.VarChar(2000)
+  createdAt  DateTime           @default(now()) @db.Timestamptz(3)
+  case       SupportCase        @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  sender     User               @relation(fields: [senderId], references: [id], onDelete: Restrict)
+
+  @@index([caseId, createdAt, id])
+  @@index([senderId, createdAt(sort: Desc)])
+}
+
+model SupportCaseInternalNote {
+  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  caseId      String      @db.Uuid
+  moderatorId String
+  body        String      @db.VarChar(2000)
+  createdAt   DateTime    @default(now()) @db.Timestamptz(3)
+  case        SupportCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  moderator   User        @relation(fields: [moderatorId], references: [id], onDelete: Restrict)
+
+  @@index([caseId, createdAt, id])
+  @@index([moderatorId, createdAt(sort: Desc)])
 }
 
 model Notification {

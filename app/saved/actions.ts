@@ -53,9 +53,12 @@ export async function setPostSavedAction(
       where: {
         id: postId,
         status: "ACTIVE",
+        moderationStatus: "VISIBLE",
+        availabilityStatus: { in: ["AVAILABLE", "RESERVED"] },
         publishedAt: { not: null },
         author: {
           blocksReceived: { none: { blockerId: context.user.id } },
+          moderationState: { isNot: { status: "SUSPENDED" } },
         },
       },
       select: { id: true },
@@ -87,6 +90,8 @@ export async function setPostSavedAction(
   }
 
   revalidatePath("/saved");
+  revalidatePath("/activity");
+  revalidatePath("/progress");
   revalidatePath("/community/[citySlug]/[localitySlug]", "page");
   return {
     success: true,

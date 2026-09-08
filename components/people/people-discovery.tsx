@@ -10,13 +10,20 @@ import {
   SearchX,
   SlidersHorizontal,
   Sparkles,
+  Route,
   UserRoundSearch,
 } from "lucide-react";
 
 import { CompatibilitySummary } from "@/components/compatibility/compatibility-summary";
+import { ActivityStageControl } from "@/components/activity/activity-stage-control";
 import { SafetyActions } from "@/components/trust-safety/safety-actions";
+import { TrustScoreIndicator } from "@/components/trust/trust-score-indicator";
 import { SaveSearchButton } from "@/components/saved/saved-controls";
+import { RecommendationSummary } from "@/components/recommendations/recommendation-summary";
+import { ResponsivenessIndicator } from "@/components/responsiveness-indicator";
+import { ShortlistProfileButton } from "@/components/people/shortlist-profile-button";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { TrustBadges } from "@/components/verification/trust-badges";
 import { activePeopleFilterCount, peopleFilterQuery } from "@/lib/discovery";
 import { cn } from "@/lib/utils";
 import type { CommunityLocationOption } from "@/types/community";
@@ -135,6 +142,7 @@ export function PeopleDiscovery({
                     name="sort"
                     value={filters.sort}
                     options={[
+                      ["recommended", "Highest Living Fit"],
                       ["highest-compatibility", "Highest compatibility"],
                       ["lowest-budget", "Lowest budget"],
                       ["newest", "Newest profiles"],
@@ -146,7 +154,7 @@ export function PeopleDiscovery({
                 <details open={activeFilterCount > 0} className="group border-t border-border/70 pt-4">
                   <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-semibold outline-none focus-visible:ring-3 focus-visible:ring-ring/20 [&::-webkit-details-marker]:hidden">
                     <SlidersHorizontal aria-hidden="true" className="size-4 text-primary" />
-                    Budget, move-in &amp; lifestyle
+                    Budget, commute, move-in &amp; lifestyle
                     {activeFilterCount ? (
                       <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">{activeFilterCount} active</span>
                     ) : null}
@@ -164,6 +172,12 @@ export function PeopleDiscovery({
                       name="score"
                       value={filters.minimumCompatibility?.toString() ?? ""}
                       options={[["50", "50%+"], ["60", "60%+"], ["70", "70%+"], ["80", "80%+"]]}
+                    />
+                    <FilterSelect
+                      label="Preferred commute range"
+                      name="commute"
+                      value={filters.preferredCommuteKm?.toString() ?? ""}
+                      options={[["5", "Up to 5 km"], ["10", "Up to 10 km"], ["15", "Up to 15 km"], ["25", "Up to 25 km"], ["50", "Up to 50 km"]]}
                     />
                     {lifestyleFields.map((field) => (
                       <FilterSelect
@@ -235,7 +249,13 @@ export function PeopleDiscovery({
   );
 }
 
-function PeopleCard({ profile }: { profile: PeopleDiscoveryProfile }) {
+export function PeopleCard({
+  profile,
+  detail = false,
+}: {
+  profile: PeopleDiscoveryProfile;
+  detail?: boolean;
+}) {
   return (
     <article className="surface-card flex flex-col p-5 sm:p-6">
       <header className="flex items-start gap-3.5">
@@ -251,11 +271,31 @@ function PeopleCard({ profile }: { profile: PeopleDiscoveryProfile }) {
             <BriefcaseBusiness aria-hidden="true" className="size-3.5" />
             {profile.profession}{profile.organization ? ` · ${profile.organization}` : ""}
           </p>
+          <div className="mt-2">
+            <ResponsivenessIndicator value={profile.responsiveness} />
+          </div>
+          <TrustBadges
+            verification={profile.verification}
+            compact
+            showDisclaimer={detail}
+            className="mt-2"
+          />
+          <TrustScoreIndicator
+            value={profile.trust}
+            details={detail}
+            className="mt-2"
+          />
         </div>
-        <SafetyActions
-          target={{ type: "USER", id: profile.id, label: "user" }}
-          user={{ id: profile.id, name: profile.name }}
-        />
+        <div className="flex shrink-0 flex-col items-end gap-2">
+          <ShortlistProfileButton
+            profileId={profile.id}
+            initialShortlisted={profile.isShortlisted}
+          />
+          <SafetyActions
+            target={{ type: "USER", id: profile.id, label: "user" }}
+            user={{ id: profile.id, name: profile.name }}
+          />
+        </div>
       </header>
 
       <p className="mt-4 text-sm leading-6 text-muted-foreground">{profile.bio}</p>
@@ -278,6 +318,14 @@ function PeopleCard({ profile }: { profile: PeopleDiscoveryProfile }) {
         </p>
       ) : null}
 
+      {profile.preferredCommuteLabel ? (
+        <p className="mt-3 flex items-center gap-2 text-sm font-medium text-muted-foreground">
+          <Route aria-hidden="true" className="size-4 shrink-0 text-primary" />
+          {profile.preferredCommuteLabel}
+          <span className="font-normal">· destination stays private</span>
+        </p>
+      ) : null}
+
       <div className="mt-4 flex flex-wrap gap-2">
         {profile.lifestyleTags.slice(0, 6).map((tag) => (
           <span key={tag} className="rounded-full border border-border/80 bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground">{tag}</span>
@@ -293,7 +341,25 @@ function PeopleCard({ profile }: { profile: PeopleDiscoveryProfile }) {
         </p>
       )}
 
-      <footer className="mt-auto border-t border-border/70 pt-4">
+      <RecommendationSummary result={profile.recommendation} />
+
+      <footer className="mt-auto flex flex-col gap-2 border-t border-border/70 pt-4 sm:flex-row">
+        <ActivityStageControl
+          targetType="FLATMATE"
+          targetId={profile.id}
+          initialStage={profile.activityStage}
+          compact
+          className="w-full"
+        />
+        {!detail ? (
+          <Link
+            href={`/flatmates/${encodeURIComponent(profile.id)}`}
+            className={cn(buttonVariants({ variant: "outline" }), "w-full")}
+          >
+            <UserRoundSearch aria-hidden="true" className="size-4" />
+            View profile
+          </Link>
+        ) : null}
         <Link
           href={{ pathname: "/chat", query: { user: profile.authUserId } }}
           className={cn(buttonVariants(), "w-full")}

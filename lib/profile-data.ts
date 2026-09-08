@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { verificationSummary } from "@/lib/verification";
 import type { LifestylePreferences, UserProfile } from "@/types/profile";
 
 type AuthIdentity = {
@@ -30,6 +31,10 @@ type PreferencesRow = {
   cleanliness: string | null;
   pets: string | null;
   occupationStatus: string | null;
+  commuteDestination: string | null;
+  commuteLatitude: number | null;
+  commuteLongitude: number | null;
+  preferredCommuteKm: number | null;
 };
 
 const dietFromDatabase: Record<string, string> = {
@@ -189,7 +194,7 @@ export async function loadUserProfile(authUserId: string) {
   const { data: preferencesData, error: preferencesError } = await supabase
     .from("UserPreferences")
     .select(
-      "id,budgetMin,budgetMax,preferredMoveInDate,diet,smoking,drinking,sleepSchedule,cleanliness,pets,occupationStatus",
+      "id,budgetMin,budgetMax,preferredMoveInDate,diet,smoking,drinking,sleepSchedule,cleanliness,pets,occupationStatus,commuteDestination,commuteLatitude,commuteLongitude,preferredCommuteKm",
     )
     .eq("userId", user.id)
     .single();
@@ -230,6 +235,39 @@ export async function loadUserProfile(authUserId: string) {
       .filter((name): name is string => Boolean(name));
   }
 
+  const visitOutcomes = await prisma.visitOutcome.findMany({
+    where: { userId: user.id },
+    select: {
+      outcome: true,
+      visit: {
+        select: {
+          post: {
+            select: {
+              type: true,
+              monthlyAmountMin: true,
+              monthlyAmountMax: true,
+              community: {
+                select: { locality: { select: { name: true } } },
+              },
+            },
+          },
+        },
+      },
+    },
+    orderBy: { updatedAt: "desc" },
+    take: 30,
+  });
+  const verificationChecks = await prisma.verificationCheck.findMany({
+    where: { userId: user.id, status: "VERIFIED" },
+    select: {
+      kind: true,
+      status: true,
+      verifiedAt: true,
+      expiresAt: true,
+    },
+    orderBy: { verifiedAt: "asc" },
+  });
+
   const lifestyle: LifestylePreferences = {
     diet: databaseLabel(dietFromDatabase, preferences.diet),
     smoking: databaseLabel(smokingFromDatabase, preferences.smoking),
@@ -258,7 +296,35 @@ export async function loadUserProfile(authUserId: string) {
     budget: formatBudget(preferences.budgetMin, preferences.budgetMax),
     moveInDate: preferences.preferredMoveInDate ?? "",
     bio: user.bio ?? "",
+    commute: {
+      destination: preferences.commuteDestination ?? "",
+      latitude:
+        preferences.commuteLatitude === null
+          ? null
+          : Number(preferences.commuteLatitude),
+      longitude:
+        preferences.commuteLongitude === null
+          ? null
+          : Number(preferences.commuteLongitude),
+      preferredRangeKm: preferences.preferredCommuteKm,
+    },
     preferences: lifestyle,
+    visitOutcomeHistory: visitOutcomes.flatMap(({ outcome, visit }) => {
+      if (visit.post.type !== "ROOM_AVAILABLE" && visit.post.type !== "PG_AVAILABLE") {
+        return [];
+      }
+      return [{
+        outcome,
+        category:
+          visit.post.type === "ROOM_AVAILABLE"
+            ? ("Room Available" as const)
+            : ("PG Available" as const),
+        locality: visit.post.community.locality.name,
+        monthlyAmountMin: visit.post.monthlyAmountMin,
+        monthlyAmountMax: visit.post.monthlyAmountMax,
+      }];
+    }),
+    verification: verificationSummary(verificationChecks),
   } satisfies UserProfile;
 }
 

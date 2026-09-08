@@ -22,6 +22,8 @@ export type SavedPostView = {
   moveInLabel: string;
   authorName: string;
   communityHref: string;
+  detailHref: string;
+  comparisonEligible: boolean;
   savedAt: string;
 };
 
