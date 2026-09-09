@@ -1057,6 +1057,7 @@ export async function loadCommunityRoom(
 function roomTypeLabel(value: "PRIVATE_ROOM" | "SHARED_ROOM" | "ENTIRE_PLACE" | null) {
   if (value === "PRIVATE_ROOM") return "Private room";
   if (value === "SHARED_ROOM") return "Shared room";
+  if (value === "ENTIRE_PLACE") return "Entire place";
   return "Either works";
 }
 

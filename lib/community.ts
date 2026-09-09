@@ -82,7 +82,12 @@ export const HOUSING_OPTIONS: Record<
   },
   "Room Available": {
     housingTypes: ["1BHK", "2BHK", "3BHK", "4BHK or larger"],
-    housingFeatures: ["Private room", "Shared room", "Master bedroom"],
+    housingFeatures: [
+      "Private room",
+      "Shared room",
+      "Entire place",
+      "Master bedroom",
+    ],
   },
   "Need Flatmate": {
     housingTypes: ["1BHK", "2BHK", "3BHK", "4BHK or larger"],
@@ -110,7 +115,7 @@ type ValidatedPostValues = {
   moveInDate: string;
   genderPreference: (typeof genderToDatabase)[keyof typeof genderToDatabase];
   propertyType: "APARTMENT" | "PG" | null;
-  roomType: "PRIVATE_ROOM" | "SHARED_ROOM" | null;
+  roomType: "PRIVATE_ROOM" | "SHARED_ROOM" | "ENTIRE_PLACE" | null;
   furnishingStatus:
     | "FURNISHED"
     | "SEMI_FURNISHED"
@@ -387,7 +392,11 @@ export function validateCommunityPost(
       ? 4
       : Number(input.housingType[0]);
     roomType =
-      input.housingFeature === "Shared room" ? "SHARED_ROOM" : "PRIVATE_ROOM";
+      input.housingFeature === "Shared room"
+        ? "SHARED_ROOM"
+        : input.housingFeature === "Entire place"
+          ? "ENTIRE_PLACE"
+          : "PRIVATE_ROOM";
     availableSpots =
       category === "Room Available"
         ? input.occupancy === "Single occupancy"

@@ -199,6 +199,7 @@ export async function saveCommunityPostAction(
     }
 
     revalidatePath("/community");
+    revalidatePath("/rooms");
     revalidatePath(roomPath);
     revalidatePath(
       communityPath({
@@ -239,13 +240,33 @@ export async function saveCommunityPostAction(
   }
 
   revalidatePath("/community");
+  revalidatePath("/rooms");
   revalidatePath(roomPath);
+  revalidatePath("/community/post/" + data.id);
   return {
     success: true,
     message: "Your post is live in the community.",
     postId: data.id,
     communityPath: roomPath,
   };
+}
+
+export async function savePropertyListingAction(
+  postId: string | null,
+  previousState: CommunityPostActionState,
+  input: CommunityPostFormValues,
+): Promise<CommunityPostActionState> {
+  if (
+    input.postType !== "Room Available" &&
+    input.postType !== "PG Available"
+  ) {
+    return failure(
+      "Choose Room Available, Flat / Shared Flat, or PG Available.",
+      { postType: "Choose a property listing type." },
+    );
+  }
+
+  return saveCommunityPostAction(postId, previousState, input);
 }
 
 export async function updatePostAvailabilityAction(
@@ -308,6 +329,7 @@ export async function updatePostAvailabilityAction(
     localitySlug: ownedPost.community.locality.slug,
   });
   revalidatePath("/community");
+  revalidatePath("/rooms");
   revalidatePath(roomPath);
   revalidatePath(`/community/post/${postId}`);
   revalidatePath("/saved");
@@ -408,6 +430,7 @@ export async function updateCommunityPostImagesAction(
     localitySlug: ownedPost.community.locality.slug,
   });
   revalidatePath(roomPath);
+  revalidatePath("/rooms");
   revalidatePath(`/community/post/${postId}`);
   revalidatePath(`/community/post/${postId}/edit`);
   return {
@@ -481,6 +504,7 @@ export async function deleteCommunityPostAction(
   }
 
   revalidatePath("/community");
+  revalidatePath("/rooms");
   revalidatePath(
     communityPath({
       citySlug: ownedPost.community.locality.city.slug,

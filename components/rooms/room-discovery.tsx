@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   ArrowRight,
   BedDouble,
+  Building2,
   CalendarDays,
   ChevronDown,
   IndianRupee,
@@ -369,11 +370,23 @@ export function RoomDiscovery({
         ) : (
           <div className="mt-6 rounded-3xl border border-dashed border-border bg-card px-5 py-14 text-center">
             <SearchX aria-hidden="true" className="mx-auto size-8 text-muted-foreground" />
-            <h2 className="mt-3 text-lg font-semibold">No homes match these filters</h2>
+            <h2 className="mt-3 text-lg font-semibold">
+              {activeFilters ? "No homes match these filters" : "No properties are listed yet"}
+            </h2>
             <p className="mx-auto mt-1 max-w-md text-sm leading-6 text-muted-foreground">
-              Try a nearby locality, a wider budget, or remove one of the score filters.
+              {activeFilters
+                ? "Try a nearby locality, a wider budget, or remove one of the score filters."
+                : "Be the first to add an available room, shared flat, or PG. Published listings appear here automatically."}
             </p>
-            <Link href="/rooms" className={cn(buttonVariants({ variant: "outline" }), "mt-5")}>Clear filters</Link>
+            <div className="mt-5 flex flex-col justify-center gap-2 sm:flex-row">
+              {activeFilters ? (
+                <Link href="/rooms" className={buttonVariants({ variant: "outline" })}>Clear filters</Link>
+              ) : null}
+              <Link href="/list-property" className={buttonVariants()}>
+                <Building2 aria-hidden="true" className="size-4" />
+                List a Property
+              </Link>
+            </div>
           </div>
         )}
       </section>

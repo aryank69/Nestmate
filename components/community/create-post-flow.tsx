@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   startTransition,
   useActionState,
@@ -40,6 +41,7 @@ import {
 
 import {
   saveCommunityPostAction,
+  savePropertyListingAction,
   updateCommunityPostImagesAction,
 } from "@/app/community/actions";
 import {
@@ -79,6 +81,7 @@ import type {
 } from "@/types/community";
 
 type PostTypeConfig = {
+  id: string;
   value: CommunityPostCategory;
   label: string;
   description: string;
@@ -88,10 +91,12 @@ type PostTypeConfig = {
   housingTypeLabel: string;
   housingFeatureLabel: string;
   descriptionPlaceholder: string;
+  presetHousingFeature?: string;
 };
 
 const postTypeOptions: PostTypeConfig[] = [
   {
+    id: "need-room",
     value: "Need a Room",
     label: "Need a Room",
     description: "Tell the community what kind of room you are looking for.",
@@ -104,6 +109,7 @@ const postTypeOptions: PostTypeConfig[] = [
       "Share your preferred area, commute needs, lifestyle, and anything a potential flatmate should know...",
   },
   {
+    id: "room-available",
     value: "Room Available",
     label: "Room Available",
     description: "Share an available room with people searching nearby.",
@@ -116,6 +122,7 @@ const postTypeOptions: PostTypeConfig[] = [
       "Describe the room, home, current flatmates, nearby landmarks, and what makes it a good fit...",
   },
   {
+    id: "need-flatmate",
     value: "Need Flatmate",
     label: "Need a Flatmate",
     description: "Find someone compatible to share your current home.",
@@ -128,6 +135,7 @@ const postTypeOptions: PostTypeConfig[] = [
       "Introduce the home, current residents, daily routine, and the kind of flatmate who would feel comfortable...",
   },
   {
+    id: "pg-available",
     value: "PG Available",
     label: "PG Available",
     description: "List a PG or co-living option for local members.",
@@ -139,6 +147,24 @@ const postTypeOptions: PostTypeConfig[] = [
     descriptionPlaceholder:
       "Describe the property, included services, house rules, nearby landmarks, and who the PG is best suited for...",
   },
+];
+
+const propertyPostTypeOptions: PostTypeConfig[] = [
+  {
+    ...postTypeOptions[1],
+    id: "private-room",
+    label: "Room Available",
+    description: "List a private room in an apartment or shared home.",
+    presetHousingFeature: "Private room",
+  },
+  {
+    ...postTypeOptions[1],
+    id: "flat-shared-flat",
+    label: "Flat / Shared Flat",
+    description: "List a shared room or an entire flat for rent.",
+    presetHousingFeature: "Shared room",
+  },
+  postTypeOptions[3],
 ];
 
 const initialActionState: CommunityPostActionState = {
@@ -207,6 +233,7 @@ export function CreatePostFlow({
   initialPost,
   lockedCommunity,
   authUserId,
+  flow = "community",
 }: {
   locations: CommunityLocationOption[];
   initialCity: string;
@@ -214,7 +241,9 @@ export function CreatePostFlow({
   initialPost?: CommunityPostFormInitial;
   lockedCommunity?: CommunityLocationOption;
   authUserId: string;
+  flow?: "community" | "property";
 }) {
+  const router = useRouter();
   const requestedLocation =
     lockedCommunity ??
     locations.find((location) => location.id === initialPost?.communityId) ??
@@ -229,6 +258,11 @@ export function CreatePostFlow({
   const [selectedCity, setSelectedCity] = useState(requestedLocation?.city ?? "");
   const [values, setValues] = useState<CommunityPostFormValues>(
     initialPost ?? emptyValues(requestedLocation?.id ?? ""),
+  );
+  const [selectedPostTypeId, setSelectedPostTypeId] = useState(
+    initialPost
+      ? postTypeOptions.find((option) => option.value === initialPost.postType)?.id ?? ""
+      : "",
   );
   const [clientErrors, setClientErrors] = useState<
     Partial<Record<CommunityPostFormField, string>>
@@ -265,15 +299,21 @@ export function CreatePostFlow({
   >("idle");
   const [imageSaveError, setImageSaveError] = useState("");
   const saveAction = useMemo(
-    () => saveCommunityPostAction.bind(null, initialPost?.id ?? null),
-    [initialPost?.id],
+    () =>
+      (flow === "property" ? savePropertyListingAction : saveCommunityPostAction)
+        .bind(null, initialPost?.id ?? null),
+    [flow, initialPost?.id],
   );
   const [actionState, dispatch, isPending] = useActionState(
     saveAction,
     initialActionState,
   );
   const postType = values.postType as CommunityPostCategory;
-  const config = postTypeOptions.find((option) => option.value === postType);
+  const availablePostTypeOptions =
+    flow === "property" ? propertyPostTypeOptions : postTypeOptions;
+  const config =
+    availablePostTypeOptions.find((option) => option.id === selectedPostTypeId) ??
+    availablePostTypeOptions.find((option) => option.value === postType);
   const errors = Object.keys(clientErrors).length
     ? clientErrors
     : ignoreServerErrors
@@ -287,8 +327,10 @@ export function CreatePostFlow({
     locations.find((location) => location.id === values.communityId) ??
     requestedLocation;
   const returnPath =
-    actionState.communityPath ??
-    (currentLocation ? communityPath(currentLocation) : "/community");
+    flow === "property"
+      ? "/rooms"
+      : actionState.communityPath ??
+        (currentLocation ? communityPath(currentLocation) : "/community");
   const mapPreview = useMemo(() => {
     const latitude = Number(values.locationLatitude);
     const longitude = Number(values.locationLongitude);
@@ -431,19 +473,44 @@ export function CreatePostFlow({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [actionState.postId, actionState.success]);
 
+  useEffect(() => {
+    if (
+      flow === "property" &&
+      actionState.success &&
+      actionState.postId &&
+      imageSaveState === "complete"
+    ) {
+      router.replace(
+        "/community/post/" + encodeURIComponent(actionState.postId),
+      );
+    }
+  }, [
+    actionState.postId,
+    actionState.success,
+    flow,
+    imageSaveState,
+    router,
+  ]);
+
   const updateField = (field: CommunityPostFormField, value: string) => {
     setValues((current) => ({ ...current, [field]: value }));
     setClientErrors((current) => ({ ...current, [field]: undefined }));
     setIgnoreServerErrors(true);
   };
 
-  const choosePostType = (value: CommunityPostCategory) => {
+  const choosePostType = (option: PostTypeConfig) => {
+    setSelectedPostTypeId(option.id);
     setValues((current) => ({
       ...current,
-      postType: value,
-      housingType: current.postType === value ? current.housingType : "",
-      housingFeature: current.postType === value ? current.housingFeature : "",
-      occupancy: current.postType === value ? current.occupancy : "",
+      postType: option.value,
+      housingType:
+        current.postType === option.value ? current.housingType : "",
+      housingFeature:
+        selectedPostTypeId === option.id
+          ? current.housingFeature
+          : option.presetHousingFeature ?? "",
+      occupancy:
+        current.postType === option.value ? current.occupancy : "",
     }));
     setIgnoreServerErrors(true);
   };
@@ -527,8 +594,15 @@ export function CreatePostFlow({
         <p className="mx-auto mt-4 max-w-lg text-base leading-7 text-muted-foreground">
           {actionState.message} Community members can now find it in the real locality feed.
         </p>
-        <Link href={returnPath} className={cn(buttonVariants({ size: "lg" }), "mt-8")}>
-          View Locality Community
+        <Link
+          href={
+            flow === "property" && actionState.postId
+              ? "/community/post/" + encodeURIComponent(actionState.postId)
+              : returnPath
+          }
+          className={cn(buttonVariants({ size: "lg" }), "mt-8")}
+        >
+          {flow === "property" ? "View Your Listing" : "View Locality Community"}
         </Link>
       </div>
     );
@@ -581,7 +655,7 @@ export function CreatePostFlow({
     <div className="mx-auto max-w-4xl">
       <Link href={returnPath} className="inline-flex items-center gap-2 rounded-lg text-sm font-semibold text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/25">
         <ArrowLeft aria-hidden="true" className="size-4" />
-        Back to Locality Community
+        {flow === "property" ? "Back to Find a Room" : "Back to Locality Community"}
       </Link>
 
       {!initialPost ? (
@@ -595,14 +669,20 @@ export function CreatePostFlow({
       {step === 1 ? (
         <section className="mt-8">
           <p className="text-sm font-semibold text-primary">Step 1 of 2</p>
-          <h1 className="mt-2 text-3xl font-semibold tracking-[-0.045em] sm:text-5xl">What would you like to post?</h1>
-          <p className="mt-4 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">Choose the option that best matches your housing need.</p>
+          <h1 className="mt-2 text-3xl font-semibold tracking-[-0.045em] sm:text-5xl">
+            {flow === "property" ? "What are you listing?" : "What would you like to post?"}
+          </h1>
+          <p className="mt-4 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
+            {flow === "property"
+              ? "Choose the property option that best describes the available home."
+              : "Choose the option that best matches your housing need."}
+          </p>
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
-            {postTypeOptions.map((option) => {
+            {availablePostTypeOptions.map((option) => {
               const Icon = option.icon;
-              const isSelected = postType === option.value;
+              const isSelected = selectedPostTypeId === option.id;
               return (
-                <button key={option.value} type="button" aria-pressed={isSelected} onClick={() => choosePostType(option.value)} className={cn("group relative flex min-h-44 flex-col items-start rounded-2xl border bg-card p-5 text-left shadow-sm outline-none transition-[border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg focus-visible:ring-3 focus-visible:ring-ring/25 sm:p-6", isSelected && "border-primary bg-primary/[0.035] ring-1 ring-primary/15")}>
+                <button key={option.id} type="button" aria-pressed={isSelected} onClick={() => choosePostType(option)} className={cn("group relative flex min-h-44 flex-col items-start rounded-2xl border bg-card p-5 text-left shadow-sm outline-none transition-[border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg focus-visible:ring-3 focus-visible:ring-ring/25 sm:p-6", isSelected && "border-primary bg-primary/[0.035] ring-1 ring-primary/15")}>
                   <span className={cn("flex size-11 items-center justify-center rounded-xl bg-muted text-muted-foreground", isSelected && "bg-primary text-primary-foreground")}><Icon aria-hidden="true" className="size-5" /></span>
                   <span className="mt-5 text-lg font-semibold">{option.label}</span>
                   <span className="mt-2 text-sm leading-6 text-muted-foreground">{option.description}</span>
@@ -799,7 +879,13 @@ export function CreatePostFlow({
               {!initialPost ? <Button type="button" variant="outline" size="lg" onClick={() => setStep(1)} disabled={isPending}>Back</Button> : null}
               <Button type="submit" size="lg" disabled={isPending}>
                 {isPending ? <LoaderCircle aria-hidden="true" className="size-4 animate-spin" /> : null}
-                {isPending ? "Saving..." : initialPost ? "Save Changes" : "Publish Post"}
+                {isPending
+                  ? "Saving..."
+                  : initialPost
+                    ? "Save Changes"
+                    : flow === "property"
+                      ? "Publish Listing"
+                      : "Publish Post"}
               </Button>
             </div>
           </form>

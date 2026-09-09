@@ -30,6 +30,7 @@
     "test:product-analytics": "node --test tests/product-analytics.test.mjs",
     "test:room-discovery": "node --test tests/room-discovery.test.mjs",
     "test:homepage-navigation": "node --test tests/homepage-navigation.test.mjs",
+    "test:property-creation": "node --test tests/property-creation-journey.test.mjs tests/community.test.mjs",
     "start": "next start",
     "lint": "eslint",
     "db:generate": "prisma generate",

@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   ArrowRight,
   BedDouble,
+  Building2,
   CheckCircle2,
   HeartHandshake,
   House,
@@ -71,6 +72,16 @@ export function HeroSection() {
                 <ArrowRight aria-hidden="true" className="size-4 transition-transform group-hover:translate-x-0.5" />
               </Link>
             </div>
+            <p className="mt-5 text-sm text-muted-foreground">
+              Have a room or property available?{" "}
+              <Link
+                href="/list-property"
+                className="inline-flex items-center gap-1.5 rounded-md font-semibold text-primary outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/25"
+              >
+                <Building2 aria-hidden="true" className="size-4" />
+                List a Property
+              </Link>
+            </p>
           </div>
 
           <div className="mx-auto mt-12 grid max-w-6xl gap-4 lg:mt-16 lg:grid-cols-2">
