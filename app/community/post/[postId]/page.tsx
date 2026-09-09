@@ -14,6 +14,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 import { loadVisitRequests } from "@/lib/visit-data";
 import { loadListingVisitSlots } from "@/lib/visit-availability-data";
+import { loadLocalityPulseForPost } from "@/lib/locality-pulse-data";
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
@@ -28,11 +29,18 @@ export default async function CommunityPostDetailPage({
   const supabase = await createSupabaseServerClient();
   const { data } = await supabase.auth.getClaims();
   const authUserId = data?.claims?.sub ?? null;
-  const [post, viewerProfile, visits, availableVisitSlots] = await Promise.all([
+  const [
+    post,
+    viewerProfile,
+    visits,
+    availableVisitSlots,
+    localityPulse,
+  ] = await Promise.all([
     loadCommunityPostDetail(postId, authUserId),
     authUserId ? loadUserProfile(authUserId) : Promise.resolve(null),
     authUserId ? loadVisitRequests(authUserId, postId) : Promise.resolve([]),
     loadListingVisitSlots(postId, authUserId),
+    loadLocalityPulseForPost(postId),
   ]);
 
   if (!post) notFound();
@@ -53,6 +61,7 @@ export default async function CommunityPostDetailPage({
           <CommunityPostCard
             post={post}
             viewerProfile={viewerProfile}
+            localityPulse={localityPulse}
             showSafetyActions={Boolean(authUserId)}
             showSaveAction={Boolean(authUserId)}
             detail

@@ -1,5 +1,6 @@
 "use client";
 
+import { trackProductAnalyticsAction } from "@/app/analytics/actions";
 import {
   type FormEvent,
   type KeyboardEvent,
@@ -256,7 +257,13 @@ export function ChatPage({
   }, []);
 
   const startConversation = useCallback(
-    async (user: ChatUser, sourcePostId?: string | null) => {
+    async (
+      user: ChatUser,
+      sourcePostId?: string | null,
+      source: "chat" | "listing" | "profile" = sourcePostId
+        ? "listing"
+        : "chat",
+    ) => {
       setIsStartingConversation(true);
       setErrorMessage(null);
 
@@ -277,6 +284,13 @@ export function ChatPage({
       setSelectedConversationId(data);
       setIsDirectoryOpen(false);
       setIsStartingConversation(false);
+      void trackProductAnalyticsAction({
+        name: "MESSAGE_STARTED",
+        properties: {
+          source,
+          hasListingContext: Boolean(sourcePostId),
+        },
+      });
     },
     [refreshConversations, supabase],
   );
@@ -291,7 +305,12 @@ export function ChatPage({
       if (targetUser) {
         initialNavigationHandledRef.current = true;
         const navigationTimer = window.setTimeout(
-          () => void startConversation(targetUser, initialPostId),
+          () =>
+            void startConversation(
+              targetUser,
+              initialPostId,
+              initialPostId ? "listing" : "profile",
+            ),
           0,
         );
         return () => window.clearTimeout(navigationTimer);

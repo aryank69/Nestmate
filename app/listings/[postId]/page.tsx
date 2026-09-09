@@ -12,6 +12,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { PostImageGallery } from "@/components/community/post-image-gallery";
+import { MoveInReadinessIndicator } from "@/components/listings/move-in-readiness-indicator";
+import { ListingDecisionPanel } from "@/components/listings/listing-decision-panel";
 import { Navbar } from "@/components/navbar";
 import { TrustScoreIndicator } from "@/components/trust/trust-score-indicator";
 import { ListingRealityScoreIndicator } from "@/components/trust/listing-reality-score";
@@ -167,6 +169,15 @@ export default async function PublicListingPage({
                   </div>
                 </dl>
 
+                <ListingDecisionPanel
+                  livingFit={null}
+                  reality={listing.reality}
+                  readiness={listing.readiness}
+                  localityPulse={listing.localityPulse}
+                  locality={listing.locality}
+                  className="mt-6"
+                />
+
                 {listing.details.length ? (
                   <section className="mt-6">
                     <h2 className="text-lg font-bold">Property details</h2>
@@ -208,6 +219,18 @@ export default async function PublicListingPage({
                   <TrustScoreIndicator
                     value={listing.trust}
                     scope="listing"
+                    details
+                    className="mt-3"
+                  />
+                </section>
+
+                <section className="mt-6">
+                  <h2 className="text-lg font-bold">Move-in Readiness</h2>
+                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                    How actionable and reliably prepared this listing appears right now.
+                  </p>
+                  <MoveInReadinessIndicator
+                    value={listing.readiness}
                     details
                     className="mt-3"
                   />

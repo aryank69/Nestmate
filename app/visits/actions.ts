@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { trackProductAnalyticsEvent } from "@/lib/analytics.server";
 import { prisma } from "@/lib/prisma";
 import { ensureUserProfile } from "@/lib/profile-data";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -95,6 +96,7 @@ async function attendanceVisitContext(visitId: string, userId: string) {
     },
     select: {
       id: true,
+      ownerId: true,
       postId: true,
       status: true,
       scheduledAt: true,
@@ -235,6 +237,15 @@ export async function confirmVisitAttendanceAction(input: {
           ? "Attendance can be confirmed only after the scheduled visit ends."
           : "We could not save your attendance. Please try again.",
     };
+  }
+  if (confirmation === "HAPPENED") {
+    await trackProductAnalyticsEvent(context.user.id, {
+      name: "VISIT_COMPLETED",
+      properties: {
+        participantRole:
+          visit.ownerId === context.user.id ? "owner" : "requester",
+      },
+    });
   }
   refreshVisitPaths(visit.postId);
   return {
@@ -779,6 +790,7 @@ export async function requestVisitAction(input: {
     select: {
       id: true,
       authorId: true,
+      type: true,
       status: true,
       moderationStatus: true,
       availabilityStatus: true,
@@ -840,6 +852,14 @@ export async function requestVisitAction(input: {
           : "We could not send your visit request. Please try again."),
     };
   }
+
+  await trackProductAnalyticsEvent(context.user.id, {
+    name: "VISIT_REQUESTED",
+    properties: {
+      listingType:
+        listing.type === "PG_AVAILABLE" ? "pg-available" : "room-available",
+    },
+  });
 
   const hasPreference =
     preference.preferredWeekdays.length > 0 ||
@@ -1103,6 +1123,13 @@ export async function recordVisitOutcomeAction(input: {
       success: false,
       message: "We could not save your private visit outcome. Please try again.",
     };
+  }
+
+  if (outcome === "FINALIZED") {
+    await trackProductAnalyticsEvent(context.user.id, {
+      name: "MATCH_FINALIZED",
+      properties: { targetType: "listing" },
+    });
   }
 
   const locality = visit.post.community.locality;

@@ -1,9 +1,11 @@
 import { redirect } from "next/navigation";
 
+import { AnalyticsEventTracker } from "@/components/analytics/analytics-event-tracker";
 import { Navbar } from "@/components/navbar";
 import { PeopleDiscovery } from "@/components/people/people-discovery";
 import { loadCommunityLocations } from "@/lib/community-data";
 import { parsePeopleFilters } from "@/lib/discovery";
+import { analyticsSearchProperties } from "@/lib/analytics";
 import { loadPeopleDiscovery } from "@/lib/people-data";
 import { ensureUserProfile } from "@/lib/profile-data";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -36,10 +38,37 @@ export default async function FlatmateDiscoveryPage({
     loadPeopleDiscovery(claims.sub, filters),
     loadCommunityLocations(),
   ]);
+  const lifestyleCount = [
+    filters.diet,
+    filters.smoking,
+    filters.drinking,
+    filters.sleepSchedule,
+    filters.cleanliness,
+    filters.pets,
+    filters.occupationStatus,
+  ].filter(Boolean).length;
+  const searchAnalytics = analyticsSearchProperties({
+    surface: "people",
+    query: filters.query,
+    budgetMin: filters.budgetMin,
+    budgetMax: filters.budgetMax,
+    moveInBy: filters.moveInBy,
+    locality: filters.localityId,
+    lifestyleCount,
+    commuteRange: filters.preferredCommuteKm,
+    minimumCompatibility: filters.minimumCompatibility,
+    sort: filters.sort,
+  });
 
   return (
     <>
       <Navbar />
+      {searchAnalytics ? (
+        <AnalyticsEventTracker
+          event={{ name: "SEARCH_FILTERS_USED", properties: searchAnalytics }}
+          dedupeKey={`search:people:${JSON.stringify(searchAnalytics)}`}
+        />
+      ) : null}
       <main className="min-h-[calc(100svh-4.5rem)]">
         <PeopleDiscovery profiles={profiles} locations={locations} filters={filters} />
       </main>

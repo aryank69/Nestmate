@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { trackProductAnalyticsEvent } from "@/lib/analytics.server";
 import { getSafeNextPath } from "@/lib/auth";
 import { ensureUserProfile } from "@/lib/profile-data";
 import {
@@ -51,11 +52,21 @@ export async function GET(request: Request) {
 
     const fullName = data.user.user_metadata?.full_name;
     try {
-      await ensureUserProfile({
+      const user = await ensureUserProfile({
         id: data.user.id,
         email: data.user.email,
         name: typeof fullName === "string" ? fullName : null,
       });
+      const provider = data.user.app_metadata?.provider;
+      if (provider === "google") {
+        const createdAt = new Date(data.user.created_at).getTime();
+        if (Number.isFinite(createdAt) && Date.now() - createdAt < 10 * 60_000) {
+          await trackProductAnalyticsEvent(user.id, {
+            name: "SIGNUP_COMPLETED",
+            properties: { method: "google" },
+          });
+        }
+      }
     } catch (profileError) {
       console.error("[auth:callback] Profile synchronization failed", profileError);
       await supabase.auth.signOut();

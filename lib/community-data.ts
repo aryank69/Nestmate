@@ -29,6 +29,12 @@ import {
   createListingImageUrls,
 } from "@/lib/listing-images.server";
 import { listingFreshness } from "@/lib/listing-freshness";
+import { loadLocalityPulse } from "@/lib/locality-pulse-data";
+import { calculateMoveInReadiness } from "@/lib/move-in-readiness";
+import {
+  loadLatestListingPhotoAtByPostIds,
+  loadOpenVisitSlotSignalByOwnerIds,
+} from "@/lib/move-in-readiness-data";
 import { publicMapPoint } from "@/lib/maps";
 import { verificationSummary } from "@/lib/verification";
 import type { CompatibilityProfile } from "@/types/compatibility";
@@ -112,6 +118,7 @@ export async function loadCommunityLocations(): Promise<
     where: { isActive: true },
     select: {
       id: true,
+      localityId: true,
       name: true,
       description: true,
       locality: {
@@ -142,6 +149,7 @@ export async function loadCommunityLocations(): Promise<
 
   return communities.map((community) => ({
     id: community.id,
+    localityId: community.localityId,
     name: community.name,
     description: community.description,
     city: community.locality.city.name,
@@ -164,6 +172,7 @@ export async function loadCommunityLocation(
     },
     select: {
       id: true,
+      localityId: true,
       name: true,
       description: true,
       locality: {
@@ -192,6 +201,7 @@ export async function loadCommunityLocation(
 
   return {
     id: community.id,
+    localityId: community.localityId,
     name: community.name,
     description: community.description,
     city: community.locality.city.name,
@@ -287,12 +297,21 @@ type KnownCommunityViewerState = {
   commuteDestination: PrivateCommuteDestination | null;
 };
 
+export type CommunityPostQueryOptions = {
+  housingTypes?: Array<"ROOM_AVAILABLE" | "PG_AVAILABLE">;
+  furnishingStatus?: "FURNISHED" | "SEMI_FURNISHED" | "UNFURNISHED" | null;
+  roomTypes?: Array<"PRIVATE_ROOM" | "SHARED_ROOM" | "ENTIRE_PLACE">;
+};
+
+type CommunityScope = string | readonly string[] | null;
+
 export async function loadCommunityPosts(
   viewerAuthUserId: string | null,
-  communityId: string,
+  communityId: CommunityScope,
   filters: CommunityPostFilters,
   knownViewerState?: KnownCommunityViewerState,
   requestedPostId?: string,
+  queryOptions?: CommunityPostQueryOptions,
 ): Promise<CommunityPost[]> {
   const viewerState =
     viewerAuthUserId && !knownViewerState
@@ -365,6 +384,7 @@ export async function loadCommunityPosts(
     true,
     bounds,
     requestedPostId ? viewerAuthUserId : null,
+    queryOptions,
   );
 
   const posts = await prisma.post.findMany({
@@ -395,6 +415,7 @@ export async function loadCommunityPosts(
       imagePaths: true,
       publishedAt: true,
       createdAt: true,
+      updatedAt: true,
       availabilityStatus: true,
       lastConfirmedAt: true,
       verificationChecks: {
@@ -483,7 +504,16 @@ export async function loadCommunityPosts(
   const listingPostIds = posts
     .filter(({ type }) => type === "ROOM_AVAILABLE" || type === "PG_AVAILABLE")
     .map(({ id }) => id);
-  const [trustByUserId, feedbackByPostId, realityByPostId] = await Promise.all([
+  const listingOwnerIds = posts
+    .filter(({ type }) => type === "ROOM_AVAILABLE" || type === "PG_AVAILABLE")
+    .map(({ author }) => author.id);
+  const [
+    trustByUserId,
+    feedbackByPostId,
+    realityByPostId,
+    openSlotsByOwnerId,
+    latestPhotoAtByPostId,
+  ] = await Promise.all([
     loadUserTrustScores(
       [...new Map(
         posts.map((post) => [
@@ -497,6 +527,12 @@ export async function loadCommunityPosts(
     ),
     loadListingFeedbackAggregates(listingPostIds),
     loadListingRealityScores(listingPostIds),
+    loadOpenVisitSlotSignalByOwnerIds(listingOwnerIds),
+    loadLatestListingPhotoAtByPostIds(
+      posts
+        .filter(({ type }) => type === "ROOM_AVAILABLE" || type === "PG_AVAILABLE")
+        .map(({ id, imagePaths }) => ({ id, imagePaths })),
+    ),
   ]);
 
   return posts.flatMap((post) => {
@@ -578,6 +614,33 @@ export async function loadCommunityPosts(
             feedback: feedbackByPostId.get(post.id) ?? null,
           })
         : authorTrust;
+    const readiness =
+      category === "Room Available" || category === "PG Available"
+        ? calculateMoveInReadiness({
+            availability,
+            imageCount: post.imagePaths.length,
+            latestPhotoAt: latestPhotoAtByPostId.get(post.id) ?? null,
+            verificationKinds: listingVerification.badges.map(({ kind }) => kind),
+            trust,
+            responsiveness: responsivenessByUserId.get(post.author.id)!,
+            hasOpenVisitSlots: openSlotsByOwnerId.get(post.author.id) ?? false,
+            propertyDetails: {
+              rent:
+                post.monthlyAmountMin !== null ||
+                post.monthlyAmountMax !== null,
+              availabilityDate: post.moveInDate !== null,
+              furnishing: post.furnishingStatus !== null,
+              roomType: post.roomType !== null,
+              occupancy: post.availableSpots !== null,
+              deposit: post.securityDeposit !== null,
+              maintenance: post.maintenanceAmount !== null,
+              preferredOccupant: post.preferredOccupant !== null,
+              attachedBathroom: post.attachedBathroom !== null,
+              parking: post.parkingType !== null,
+              amenities: post.amenities.length > 0,
+            },
+          })
+        : null;
 
     return [{
       id: post.id,
@@ -663,6 +726,7 @@ export async function loadCommunityPosts(
       verification: listingVerification,
       trust,
       reality: realityByPostId.get(post.id) ?? emptyListingRealityScore(),
+      readiness,
       isOwner: post.author.authUserId === viewerAuthUserId,
       isSaved: savedPostIds.has(post.id),
       activityStage:
@@ -703,13 +767,14 @@ export async function loadCommunityPostDetail(
 }
 
 function communityPostWhere(
-  communityId: string,
+  communityId: CommunityScope,
   filters: CommunityPostFilters,
   blockedUserIds: string[],
   closedPostIds: string[],
   includePostType: boolean,
   bounds: CommuteBounds | null = null,
   closedOwnerAuthUserId: string | null = null,
+  queryOptions?: CommunityPostQueryOptions,
 ): Prisma.PostWhereInput {
   const and: Prisma.PostWhereInput[] = [];
 
@@ -731,6 +796,8 @@ function communityPostWhere(
         { title: { contains: filters.query, mode: "insensitive" } },
         { description: { contains: filters.query, mode: "insensitive" } },
         { author: { name: { contains: filters.query, mode: "insensitive" } } },
+        { community: { locality: { name: { contains: filters.query, mode: "insensitive" } } } },
+        { community: { locality: { city: { name: { contains: filters.query, mode: "insensitive" } } } } },
       ],
     });
   }
@@ -770,8 +837,25 @@ function communityPostWhere(
     });
   }
 
+  if (queryOptions?.housingTypes?.length) {
+    and.push({ type: { in: queryOptions.housingTypes } });
+  }
+  if (queryOptions?.furnishingStatus) {
+    and.push({ furnishingStatus: queryOptions.furnishingStatus });
+  }
+  if (queryOptions?.roomTypes?.length) {
+    and.push({ roomType: { in: queryOptions.roomTypes } });
+  }
+
+  const communityWhere =
+    typeof communityId === "string"
+      ? { communityId }
+      : Array.isArray(communityId)
+        ? { communityId: { in: [...communityId] } }
+        : {};
+
   return {
-    communityId,
+    ...communityWhere,
     status: "ACTIVE",
     moderationStatus: "VISIBLE",
     publishedAt: { not: null },
@@ -918,7 +1002,7 @@ export async function loadCommunityRoom(
     activityStages: viewer?.interestsTracked ?? [],
     commuteDestination: destination,
   };
-  const [posts, postTypeCounts] = await Promise.all([
+  const [posts, postTypeCounts, localityPulse] = await Promise.all([
     loadCommunityPosts(
       viewerAuthUserId,
       community.id,
@@ -932,6 +1016,7 @@ export async function loadCommunityRoom(
       closedPostIds,
       destination,
     ),
+    loadLocalityPulse(community.id, community.localityId),
   ]);
 
   const membership = viewer?.memberships[0];
@@ -959,6 +1044,7 @@ export async function loadCommunityRoom(
 
   return {
     community,
+    localityPulse,
     posts,
     postTypeCounts,
     isMember: Boolean(membership),

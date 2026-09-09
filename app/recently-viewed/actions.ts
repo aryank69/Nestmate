@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { trackProductAnalyticsEvent } from "@/lib/analytics.server";
 import { prisma } from "@/lib/prisma";
 import { ensureUserProfile } from "@/lib/profile-data";
 import {
@@ -102,6 +103,12 @@ export async function recordRecentViewAction(
     });
     return { success: false, message: "We could not update your viewing history." };
   }
+  await trackProductAnalyticsEvent(context.user.id, {
+    name: parsed.targetType === "POST" ? "LISTING_VIEWED" : "PROFILE_VIEWED",
+    properties: {
+      surface: parsed.targetType === "POST" ? "community" : "people",
+    },
+  });
   revalidatePath("/recently-viewed");
   return { success: true, message: "Viewing history updated." };
 }

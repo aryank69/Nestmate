@@ -7,6 +7,7 @@ import {
   parseBudget,
   profilePreferencesToDatabase,
 } from "@/lib/profile-data";
+import { trackProductAnalyticsEvent } from "@/lib/analytics.server";
 import { validateCommutePreference } from "@/lib/commute";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { ProfileUpdateResult, UserProfile } from "@/types/profile";
@@ -192,6 +193,16 @@ export async function updateProfileAction(
   }
 
   const savedProfile = await loadUserProfile(claims.sub);
+  if (
+    savedProfile.verification.badges.some(
+      (badge) => badge.kind === "PROFILE_COMPLETE",
+    )
+  ) {
+    await trackProductAnalyticsEvent(userData.id, {
+      name: "PROFILE_COMPLETED",
+      properties: { completionVersion: 1 },
+    });
+  }
   const unmatchedCount = requestedLocalities.length - matchedLocalities.length;
 
   return {

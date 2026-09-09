@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { trackProductAnalyticsEvent } from "@/lib/analytics.server";
 import { prisma } from "@/lib/prisma";
 import { ensureUserProfile } from "@/lib/profile-data";
 import { validateSavedSearchInput } from "@/lib/saved";
@@ -87,6 +88,13 @@ export async function setPostSavedAction(
     if (error) {
       return { success: false, message: "We could not remove that saved post." };
     }
+  }
+
+  if (shouldSave) {
+    await trackProductAnalyticsEvent(context.user.id, {
+      name: "LISTING_SAVED",
+      properties: { source: "community" },
+    });
   }
 
   revalidatePath("/saved");

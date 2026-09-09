@@ -14,6 +14,7 @@ import {
   TRUST_RANKING_WEIGHT,
   trustRecommendationAlignment,
 } from "@/lib/trust-score";
+import { readinessRankingValue } from "@/lib/move-in-readiness";
 import type { CompatibilityResult } from "@/types/compatibility";
 import type { CommunityPost } from "@/types/community";
 import type { PeopleDiscoveryProfile } from "@/types/discovery";
@@ -688,6 +689,8 @@ export function rankListingRecommendations(
     (first, second) =>
       (second.recommendation?.score ?? -1) -
         (first.recommendation?.score ?? -1) ||
+      readinessRankingValue(second.readiness) -
+        readinessRankingValue(first.readiness) ||
       (trustRecommendationAlignment(second.trust) ?? 0) -
         (trustRecommendationAlignment(first.trust) ?? 0) ||
       Number(first.availability.isStale) -

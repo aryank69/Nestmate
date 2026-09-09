@@ -13,6 +13,36 @@ export type SearchParamRecord = Record<
 
 export type CommunityPostSort = "recommended" | "newest" | "lowest-amount";
 
+export type RoomListingKind =
+  | "ALL"
+  | "ROOM_AVAILABLE"
+  | "FLAT_SHARED"
+  | "PG_AVAILABLE";
+
+export type RoomDiscoverySort =
+  | "recommended"
+  | "newest"
+  | "lowest-rent"
+  | "highest-readiness";
+
+export type RoomDiscoveryFilters = {
+  query: string;
+  citySlug: string;
+  communityId: string;
+  kind: RoomListingKind;
+  budgetMin: number | null;
+  budgetMax: number | null;
+  moveInBy: string;
+  furnishing: "FURNISHED" | "SEMI_FURNISHED" | "UNFURNISHED" | null;
+  roomType: "PRIVATE_ROOM" | "SHARED_ROOM" | "ENTIRE_PLACE" | null;
+  amenities: string[];
+  maximumDistanceKm: number | null;
+  minimumLivingFit: number | null;
+  minimumRealityScore: number | null;
+  minimumReadiness: number | null;
+  sort: RoomDiscoverySort;
+};
+
 export type CommunityPostFilters = {
   query: string;
   postType: "NEED_ROOM" | "ROOM_AVAILABLE" | "NEED_FLATMATE" | "PG_AVAILABLE" | null;

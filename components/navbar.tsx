@@ -10,6 +10,7 @@ import {
   Building2,
   CalendarClock,
   ChartNoAxesColumnIncreasing,
+  ChevronDown,
   CircleHelp,
   Files,
   HouseHeart,
@@ -31,12 +32,19 @@ import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
-const navigation = [
+const primaryNavigation = [
   { label: "Find a Room", href: "/rooms", icon: BedDouble },
-  { label: "Find a Flatmate", href: "/flatmates", icon: UsersRound },
+  { label: "Find a Roommate", href: "/flatmates", icon: UsersRound },
+];
+
+const supportingNavigation = [
+  { label: "Community", href: "/community", icon: MessagesSquare },
+  { label: "How it Works", href: "/#how-it-works", icon: CircleHelp },
+];
+
+const moreNavigation = [
   { label: "Shortlist", href: "/shortlist", icon: HeartHandshake },
   { label: "PGs", href: "/pgs", icon: Building },
-  { label: "Community", href: "/community", icon: MessagesSquare },
   { label: "Messages", href: "/chat", icon: MessageCircle },
   { label: "Visits", href: "/visits", icon: CalendarClock },
   { label: "My Activity", href: "/activity", icon: ListChecks },
@@ -49,7 +57,12 @@ const navigation = [
   { label: "Recently Viewed", href: "/recently-viewed", icon: History },
   { label: "Support", href: "/support", icon: LifeBuoy },
   { label: "Profile", href: "/profile", icon: UserRound },
-  { label: "How it Works", href: "/#how-it-works", icon: CircleHelp },
+];
+
+const mobileNavigation = [
+  ...primaryNavigation,
+  ...supportingNavigation,
+  ...moreNavigation,
 ];
 
 export function Navbar() {
@@ -140,8 +153,17 @@ export function Navbar() {
           </span>
         </Link>
 
-        <nav className="hidden items-center gap-0.5 xl:flex" aria-label="Primary navigation">
-          {navigation.map((item) => (
+        <nav className="hidden items-center gap-1 xl:flex" aria-label="Primary navigation">
+          {primaryNavigation.map((item) => (
+            <Link
+              key={item.label}
+              href={item.href}
+              className="rounded-xl bg-primary/[0.06] px-3.5 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/25"
+            >
+              {item.label}
+            </Link>
+          ))}
+          {supportingNavigation.map((item) => (
             <Link
               key={item.label}
               href={item.href}
@@ -150,14 +172,33 @@ export function Navbar() {
               {item.label}
             </Link>
           ))}
-          {hasModeratorAccess ? (
-            <Link
-              href="/admin/moderation"
-              className="rounded-xl px-3.5 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/25"
-            >
-              Moderation
-            </Link>
-          ) : null}
+          <details className="group relative">
+            <summary className="flex cursor-pointer list-none items-center gap-1 rounded-xl px-3.5 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/25 [&::-webkit-details-marker]:hidden">
+              More
+              <ChevronDown aria-hidden="true" className="size-3.5 transition-transform group-open:rotate-180" />
+            </summary>
+            <div className="absolute right-0 top-[calc(100%+0.65rem)] z-50 grid max-h-[min(70vh,34rem)] w-64 gap-1 overflow-y-auto rounded-2xl border border-border/80 bg-background p-2 shadow-xl shadow-foreground/10">
+              {moreNavigation.map((item) => (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/25"
+                >
+                  <item.icon aria-hidden="true" className="size-4 text-muted-foreground" />
+                  {item.label}
+                </Link>
+              ))}
+              {hasModeratorAccess ? (
+                <Link
+                  href="/admin/moderation"
+                  className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/25"
+                >
+                  <ShieldCheck aria-hidden="true" className="size-4 text-muted-foreground" />
+                  Moderation
+                </Link>
+              ) : null}
+            </div>
+          </details>
         </nav>
 
         <div className="hidden shrink-0 items-center gap-2 xl:flex">
@@ -224,14 +265,18 @@ export function Navbar() {
             className="content-shell flex flex-col gap-1.5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
             aria-label="Mobile navigation"
           >
-            {navigation.map((item) => (
+            {mobileNavigation.map((item, index) => (
               <Link
                 key={item.label}
                 href={item.href}
-                className="flex items-center gap-3 rounded-xl border border-transparent px-3 py-3 text-[0.9375rem] font-medium text-foreground transition-colors hover:border-border/80 hover:bg-card focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/25"
+                className={
+                  index < primaryNavigation.length
+                    ? "flex items-center gap-3 rounded-xl border border-primary/15 bg-primary/[0.055] px-3 py-3 text-[0.9375rem] font-semibold text-foreground transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/25"
+                    : "flex items-center gap-3 rounded-xl border border-transparent px-3 py-3 text-[0.9375rem] font-medium text-foreground transition-colors hover:border-border/80 hover:bg-card focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/25"
+                }
                 onClick={closeMenu}
               >
-                <span className="flex size-9 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                <span className={index < primaryNavigation.length ? "flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground" : "flex size-9 items-center justify-center rounded-lg bg-muted text-muted-foreground"}>
                   <item.icon aria-hidden="true" className="size-4.5" />
                 </span>
                 {item.label}

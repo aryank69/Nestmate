@@ -8,6 +8,7 @@ import type { VerificationSummary } from "@/types/verification";
 import type { InterestStage } from "@/types/activity";
 import type { TrustScore } from "@/types/trust";
 import type { ListingRealityScore } from "@/types/listing-reality";
+import type { MoveInReadiness } from "@/types/move-in-readiness";
 
 export type CommunityPostCategory =
   | "Need a Room"
@@ -75,6 +76,7 @@ export type CommunityPost = {
   verification: VerificationSummary;
   trust: TrustScore;
   reality: ListingRealityScore;
+  readiness: MoveInReadiness | null;
   isOwner: boolean;
   isSaved?: boolean;
   activityStage: InterestStage | null;
@@ -82,6 +84,7 @@ export type CommunityPost = {
 
 export type CommunityLocationOption = {
   id: string;
+  localityId: string;
   name: string;
   description: string | null;
   city: string;

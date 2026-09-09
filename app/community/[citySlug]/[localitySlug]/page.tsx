@@ -1,11 +1,13 @@
 import { notFound } from "next/navigation";
 
+import { AnalyticsEventTracker } from "@/components/analytics/analytics-event-tracker";
 import { CommunityRoom } from "@/components/community/community-room";
 import { Navbar } from "@/components/navbar";
 import {
   loadCommunityLocations,
   loadCommunityRoom,
 } from "@/lib/community-data";
+import { analyticsSearchProperties } from "@/lib/analytics";
 import { parseCommunityPostFilters } from "@/lib/discovery";
 import { loadUserProfile } from "@/lib/profile-data";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -33,6 +35,18 @@ export default async function LocalityCommunityRoomPage({
 
   if (!room) notFound();
 
+  const searchAnalytics = analyticsSearchProperties({
+    surface: "listings",
+    query: filters.query,
+    budgetMin: filters.budgetMin,
+    budgetMax: filters.budgetMax,
+    moveInBy: filters.moveInBy,
+    category: filters.postType,
+    preference: filters.genderPreference,
+    commuteRange: filters.maximumDistanceKm,
+    sort: filters.sort,
+  });
+
   let viewerProfile: UserProfile | null = null;
   if (authUserId) {
     try {
@@ -45,9 +59,27 @@ export default async function LocalityCommunityRoomPage({
   return (
     <>
       <Navbar />
+      {authUserId ? (
+        <>
+          <AnalyticsEventTracker
+            event={{
+              name: "LOCALITY_SELECTED",
+              properties: { source: "direct-link" },
+            }}
+            dedupeKey={`locality:${room.community.id}`}
+          />
+          {searchAnalytics ? (
+            <AnalyticsEventTracker
+              event={{ name: "SEARCH_FILTERS_USED", properties: searchAnalytics }}
+              dedupeKey={`search:listings:${JSON.stringify(searchAnalytics)}`}
+            />
+          ) : null}
+        </>
+      ) : null}
       <main className="min-h-[calc(100svh-4.5rem)]">
         <CommunityRoom
           community={room.community}
+          localityPulse={room.localityPulse}
           locations={locations}
           posts={room.posts}
           postTypeCounts={room.postTypeCounts}

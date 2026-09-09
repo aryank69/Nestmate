@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { isInterestStage, isInterestTargetType } from "@/lib/activity";
+import { trackProductAnalyticsEvent } from "@/lib/analytics.server";
 import { loadPeopleProfile } from "@/lib/people-data";
 import { prisma } from "@/lib/prisma";
 import { ensureUserProfile } from "@/lib/profile-data";
@@ -116,6 +117,15 @@ export async function setActivityStageAction(input: {
       success: false,
       message: "We could not update this activity. Please try again.",
     };
+  }
+
+  if (input.stage === "FINALIZED") {
+    await trackProductAnalyticsEvent(user.id, {
+      name: "MATCH_FINALIZED",
+      properties: {
+        targetType: input.targetType === "LISTING" ? "listing" : "flatmate",
+      },
+    });
   }
 
   revalidatePath("/activity");

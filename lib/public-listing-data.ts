@@ -9,6 +9,12 @@ import {
 } from "@/lib/community";
 import { createListingImageUrls } from "@/lib/listing-images.server";
 import { listingFreshness } from "@/lib/listing-freshness";
+import { loadLocalityPulse } from "@/lib/locality-pulse-data";
+import { calculateMoveInReadiness } from "@/lib/move-in-readiness";
+import {
+  loadLatestListingPhotoAtByPostIds,
+  loadOpenVisitSlotSignalByOwnerIds,
+} from "@/lib/move-in-readiness-data";
 import {
   isEligiblePublicListing,
   privacySafeListingTokens,
@@ -177,6 +183,8 @@ export const loadPublicListing = cache(async function loadPublicListing(
       updatedAt: true,
       community: {
         select: {
+          id: true,
+          localityId: true,
           isActive: true,
           locality: {
             select: {
@@ -249,6 +257,36 @@ export const loadPublicListing = cache(async function loadPublicListing(
     availability,
     feedback: listingFeedback,
   });
+  const [openSlotsByOwnerId, latestPhotoAtByPostId, localityPulse] = await Promise.all([
+    loadOpenVisitSlotSignalByOwnerIds([post.author.id]),
+    loadLatestListingPhotoAtByPostIds([
+      { id: post.id, imagePaths: post.imagePaths },
+    ]),
+    loadLocalityPulse(post.community.id, post.community.localityId),
+  ]);
+  const readiness = calculateMoveInReadiness({
+    availability,
+    imageCount: post.imagePaths.length,
+    latestPhotoAt: latestPhotoAtByPostId.get(post.id) ?? null,
+    verificationKinds: listingVerification.badges.map(({ kind }) => kind),
+    trust,
+    responsiveness: responsiveness.get(post.author.id)!,
+    hasOpenVisitSlots: openSlotsByOwnerId.get(post.author.id) ?? false,
+    propertyDetails: {
+      rent:
+        post.monthlyAmountMin !== null || post.monthlyAmountMax !== null,
+      availabilityDate: post.moveInDate !== null,
+      furnishing: post.furnishingStatus !== null,
+      roomType: post.roomType !== null,
+      occupancy: post.availableSpots !== null,
+      deposit: post.securityDeposit !== null,
+      maintenance: post.maintenanceAmount !== null,
+      preferredOccupant: post.preferredOccupant !== null,
+      attachedBathroom: post.attachedBathroom !== null,
+      parking: post.parkingType !== null,
+      amenities: post.amenities.length > 0,
+    },
+  });
   const locality = post.community.locality;
 
   return {
@@ -295,6 +333,8 @@ export const loadPublicListing = cache(async function loadPublicListing(
     verification: listingVerification,
     trust,
     reality,
+    readiness,
+    localityPulse,
     publishedAt: post.publishedAt.toISOString(),
     updatedAt: post.updatedAt.toISOString(),
   };

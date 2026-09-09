@@ -34,6 +34,8 @@ import {
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ActivityStageControl } from "@/components/activity/activity-stage-control";
 import { PostImageGallery } from "@/components/community/post-image-gallery";
+import { MoveInReadinessIndicator } from "@/components/listings/move-in-readiness-indicator";
+import { ListingDecisionPanel } from "@/components/listings/listing-decision-panel";
 import { CompatibilitySummary } from "@/components/compatibility/compatibility-summary";
 import { PropertyLocationMap } from "@/components/maps/property-location-map";
 import { RecommendationSummary } from "@/components/recommendations/recommendation-summary";
@@ -61,6 +63,7 @@ import type {
   CommunityLocationOption,
 } from "@/types/community";
 import type { UserProfile } from "@/types/profile";
+import type { LocalityPulse } from "@/types/locality-pulse";
 
 const categoryStyles: Record<CommunityPostCategory, string> = {
   "Need a Room": "bg-accent text-accent-foreground",
@@ -146,12 +149,14 @@ function ListingDetails({ details }: { details: CommunityListingDetails }) {
 export function CommunityPostCard({
   post,
   viewerProfile,
+  localityPulse = null,
   showSafetyActions = Boolean(viewerProfile),
   showSaveAction = Boolean(viewerProfile),
   detail = false,
 }: {
   post: CommunityPost;
   viewerProfile: UserProfile | null;
+  localityPulse?: LocalityPulse | null;
   showSafetyActions?: boolean;
   showSaveAction?: boolean;
   detail?: boolean;
@@ -248,6 +253,13 @@ export function CommunityPostCard({
         <TrustBadges verification={post.verification} compact />
         {post.category === "Room Available" || post.category === "PG Available" ? (
           <>
+            {post.readiness ? (
+              <MoveInReadinessIndicator
+                value={post.readiness}
+                details={detail}
+                className={detail ? "mt-3 basis-full" : undefined}
+              />
+            ) : null}
             <TrustScoreIndicator
               value={post.trust}
               scope="listing"
@@ -330,6 +342,19 @@ export function CommunityPostCard({
         ))}
       </div>
 
+      {(post.category === "Room Available" || post.category === "PG Available") &&
+      post.readiness ? (
+        <ListingDecisionPanel
+          livingFit={recommendation}
+          reality={post.reality}
+          readiness={post.readiness}
+          localityPulse={localityPulse}
+          locality={post.locality}
+          compact={!detail}
+          className="mt-5"
+        />
+      ) : null}
+
       {detail && post.listingDetails ? (
         <ListingDetails details={post.listingDetails} />
       ) : null}
@@ -341,7 +366,10 @@ export function CommunityPostCard({
         />
       ) : null}
 
-      <RecommendationSummary result={recommendation} />
+      {detail ||
+      (post.category !== "Room Available" && post.category !== "PG Available") ? (
+        <RecommendationSummary result={recommendation} />
+      ) : null}
 
       {compatibility ? (
         <CompatibilitySummary result={compatibility} />

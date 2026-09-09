@@ -2,6 +2,8 @@ import type { ListingImage } from "@/types/community";
 import type { TrustScore } from "@/types/trust";
 import type { VerificationSummary } from "@/types/verification";
 import type { ListingRealityScore } from "@/types/listing-reality";
+import type { MoveInReadiness } from "@/types/move-in-readiness";
+import type { LocalityPulse } from "@/types/locality-pulse";
 
 export type PublicListingCategory = "Room Available" | "PG Available";
 
@@ -32,6 +34,8 @@ export type PublicListing = {
   verification: VerificationSummary;
   trust: TrustScore;
   reality: ListingRealityScore;
+  readiness: MoveInReadiness;
+  localityPulse: LocalityPulse;
   publishedAt: string;
   updatedAt: string;
 };

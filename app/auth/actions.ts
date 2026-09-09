@@ -4,6 +4,8 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { getSafeNextPath } from "@/lib/auth";
+import { trackProductAnalyticsEvent } from "@/lib/analytics.server";
+import { prisma } from "@/lib/prisma";
 import { ensureUserProfile } from "@/lib/profile-data";
 import {
   getFriendlyAuthError,
@@ -136,10 +138,14 @@ export async function signupAction(
   // on first login.
   if (data.user && data.session) {
     try {
-      await ensureUserProfile({
+      const user = await ensureUserProfile({
         id: data.user.id,
         email: data.user.email,
         name,
+      });
+      await trackProductAnalyticsEvent(user.id, {
+        name: "SIGNUP_COMPLETED",
+        properties: { method: "email" },
       });
     } catch (profileError) {
       console.error("[auth:signup] Profile synchronization failed", profileError);
@@ -149,6 +155,28 @@ export async function signupAction(
       return errorState(
         "Your account was created, but NestMate could not finish setting up your profile. Please try logging in again.",
       );
+    }
+  }
+
+  if (data.user && !data.session && (data.user.identities?.length ?? 0) > 0) {
+    try {
+      const user = await prisma.user.findUnique({
+        where: { authUserId: data.user.id },
+        select: { id: true },
+      });
+      if (user) {
+        await trackProductAnalyticsEvent(user.id, {
+          name: "SIGNUP_COMPLETED",
+          properties: { method: "email" },
+        });
+      }
+    } catch (analyticsError) {
+      console.error("[analytics] Signup lookup failed", {
+        error:
+          analyticsError instanceof Error
+            ? analyticsError.message
+            : "Unknown error",
+      });
     }
   }
 

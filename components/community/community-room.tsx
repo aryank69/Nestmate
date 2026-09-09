@@ -24,6 +24,7 @@ import {
 import { joinCommunityAction } from "@/app/community/actions";
 import { CommunityChat } from "@/components/community/community-chat";
 import { CommunityPostCard } from "@/components/community/community-page";
+import { LocalityPulseCard } from "@/components/community/locality-pulse";
 import { SaveSearchButton } from "@/components/saved/saved-controls";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { communityPath } from "@/lib/community";
@@ -43,6 +44,7 @@ import type {
   CommunityPostTypeCounts,
 } from "@/types/discovery";
 import type { UserProfile } from "@/types/profile";
+import type { LocalityPulse } from "@/types/locality-pulse";
 
 const roomTabs: {
   label: string;
@@ -60,6 +62,7 @@ const selectClassName =
 
 export function CommunityRoom({
   community,
+  localityPulse,
   locations,
   posts,
   postTypeCounts,
@@ -72,6 +75,7 @@ export function CommunityRoom({
   initialView,
 }: {
   community: CommunityLocationOption;
+  localityPulse: LocalityPulse;
   locations: CommunityLocationOption[];
   posts: CommunityPost[];
   postTypeCounts: CommunityPostTypeCounts;
@@ -339,6 +343,9 @@ export function CommunityRoom({
 
       {activeView === "posts" ? (
       <section className="content-shell py-8 sm:py-10">
+        <div className="mx-auto mb-8 max-w-5xl">
+          <LocalityPulseCard locality={community.locality} pulse={localityPulse} />
+        </div>
         <div className="mx-auto max-w-3xl">
           <div className="surface-card mb-6 p-4 sm:p-5">
             <form action={currentPath} method="get" className="space-y-4">
@@ -493,6 +500,7 @@ export function CommunityRoom({
                   key={post.id}
                   post={post}
                   viewerProfile={viewerProfile}
+                  localityPulse={localityPulse}
                   showSafetyActions={isAuthenticated}
                   showSaveAction={isAuthenticated}
                 />
