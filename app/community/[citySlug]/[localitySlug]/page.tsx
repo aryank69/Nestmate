@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { AnalyticsEventTracker } from "@/components/analytics/analytics-event-tracker";
 import { CommunityRoom } from "@/components/community/community-room";
@@ -25,8 +25,12 @@ export default async function LocalityCommunityRoomPage({
   const query = await searchParams;
   const filters = parseCommunityPostFilters(query);
   const supabase = await createSupabaseServerClient();
-  const { data } = await supabase.auth.getClaims();
-  const authUserId = data?.claims?.sub ?? null;
+  const { data, error } = await supabase.auth.getClaims();
+  const authUserId = data?.claims?.sub;
+  if (error || !authUserId) {
+    const path = `/community/${encodeURIComponent(citySlug)}/${encodeURIComponent(localitySlug)}`;
+    redirect(`/login?next=${encodeURIComponent(path)}`);
+  }
 
   const [room, locations] = await Promise.all([
     loadCommunityRoom(citySlug, localitySlug, authUserId, filters),
@@ -59,22 +63,18 @@ export default async function LocalityCommunityRoomPage({
   return (
     <>
       <Navbar />
-      {authUserId ? (
-        <>
-          <AnalyticsEventTracker
-            event={{
-              name: "LOCALITY_SELECTED",
-              properties: { source: "direct-link" },
-            }}
-            dedupeKey={`locality:${room.community.id}`}
-          />
-          {searchAnalytics ? (
-            <AnalyticsEventTracker
-              event={{ name: "SEARCH_FILTERS_USED", properties: searchAnalytics }}
-              dedupeKey={`search:listings:${JSON.stringify(searchAnalytics)}`}
-            />
-          ) : null}
-        </>
+      <AnalyticsEventTracker
+        event={{
+          name: "LOCALITY_SELECTED",
+          properties: { source: "direct-link" },
+        }}
+        dedupeKey={`locality:${room.community.id}`}
+      />
+      {searchAnalytics ? (
+        <AnalyticsEventTracker
+          event={{ name: "SEARCH_FILTERS_USED", properties: searchAnalytics }}
+          dedupeKey={`search:listings:${JSON.stringify(searchAnalytics)}`}
+        />
       ) : null}
       <main className="min-h-[calc(100svh-4.5rem)]">
         <CommunityRoom
@@ -85,7 +85,7 @@ export default async function LocalityCommunityRoomPage({
           postTypeCounts={room.postTypeCounts}
           filters={filters}
           viewerProfile={viewerProfile}
-          isAuthenticated={Boolean(authUserId)}
+          isAuthenticated
           isMember={room.isMember}
           chatIdentity={room.chatIdentity}
           initialChatUnreadCount={room.chatUnreadCount}

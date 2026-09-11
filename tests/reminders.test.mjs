@@ -97,8 +97,8 @@ test("the Reminders page provides clear controls and notification integration", 
   assert.match(uiSource, /Dismiss/);
   assert.match(uiSource, /Tomorrow/);
   assert.match(uiSource, /Message contents, private notes, and exact private locations are never included/);
-  assert.match(uiSource, /nestmate:reminders-changed/);
+  assert.match(uiSource, /roomzi:reminders-changed/);
   assert.match(notificationsPage, /loadReminderData/);
   assert.match(notificationsPage, /initialReminderCount/);
-  assert.match(navbarSource, /addEventListener\("nestmate:reminders-changed"/);
+  assert.match(navbarSource, /addEventListener\("roomzi:reminders-changed"/);
 });

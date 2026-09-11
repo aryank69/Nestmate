@@ -11,7 +11,13 @@ import {
   rankListingRecommendations,
 } from "@/lib/recommendations";
 import { filterRoomDiscoveryResults } from "@/lib/room-discovery";
-import type { CommunityPostFilters, RoomDiscoveryFilters } from "@/types/discovery";
+import { roomRecoveryCandidates } from "@/lib/zero-result-recovery";
+import type { CommunityLocationOption } from "@/types/community";
+import type {
+  CommunityPostFilters,
+  RoomDiscoveryFilters,
+  ZeroResultSuggestion,
+} from "@/types/discovery";
 
 function roomTypeScope(filters: RoomDiscoveryFilters) {
   const kindTypes =
@@ -37,11 +43,14 @@ function queryOptions(filters: RoomDiscoveryFilters): CommunityPostQueryOptions 
   };
 }
 
-export async function loadRoomDiscovery(
+type RoomViewer = Awaited<ReturnType<typeof loadUserProfile>> | null;
+
+async function loadRoomDiscoveryMatches(
   viewerAuthUserId: string | null,
   filters: RoomDiscoveryFilters,
+  locations: CommunityLocationOption[],
+  viewer: RoomViewer,
 ) {
-  const locations = await loadCommunityLocations();
   const selectedLocality = filters.communityId
     ? locations.find((location) => location.id === filters.communityId)
     : null;
@@ -70,9 +79,9 @@ export async function loadRoomDiscovery(
     sort: filters.sort === "lowest-rent" ? "lowest-amount" : "newest",
   };
 
-  const [posts, viewer] = await Promise.all([
+  const posts =
     localityMatchesCity && (types === undefined || types.length > 0)
-      ? loadCommunityPosts(
+      ? await loadCommunityPosts(
           viewerAuthUserId,
           scope,
           baseFilters,
@@ -80,9 +89,7 @@ export async function loadRoomDiscovery(
           undefined,
           queryOptions(filters),
         )
-      : Promise.resolve([]),
-    viewerAuthUserId ? loadUserProfile(viewerAuthUserId) : Promise.resolve(null),
-  ]);
+      : [];
 
   const scored =
     filters.sort === "recommended"
@@ -93,10 +100,76 @@ export async function loadRoomDiscovery(
             ? calculateListingRecommendation(post, viewer)
             : null,
         }));
-  const listings = filterRoomDiscoveryResults(scored, filters);
+  return filterRoomDiscoveryResults(scored, filters);
+}
+
+async function loadRoomRecoverySuggestions(
+  viewerAuthUserId: string | null,
+  filters: RoomDiscoveryFilters,
+  locations: CommunityLocationOption[],
+  viewer: RoomViewer,
+) {
+  const suggestions: ZeroResultSuggestion[] = [];
+  let hasLocalitySuggestion = false;
+
+  for (const candidate of roomRecoveryCandidates(filters, locations)) {
+    if (candidate.id.startsWith("room-locality-") && hasLocalitySuggestion) {
+      continue;
+    }
+    const matches = await loadRoomDiscoveryMatches(
+      viewerAuthUserId,
+      candidate.filters,
+      locations,
+      viewer,
+    );
+    if (!matches.length) continue;
+
+    suggestions.push({
+      id: candidate.id,
+      title: candidate.title,
+      description: candidate.description,
+      href: candidate.href,
+      relaxedCriteria: candidate.relaxedCriteria,
+      resultCount: matches.length,
+    });
+    if (candidate.id.startsWith("room-locality-")) {
+      hasLocalitySuggestion = true;
+    }
+    if (suggestions.length >= 5) break;
+  }
+
+  return suggestions;
+}
+
+export async function loadRoomDiscovery(
+  viewerAuthUserId: string | null,
+  filters: RoomDiscoveryFilters,
+) {
+  const [locations, viewer] = await Promise.all([
+    loadCommunityLocations(),
+    viewerAuthUserId ? loadUserProfile(viewerAuthUserId) : Promise.resolve(null),
+  ]);
+  const listings = await loadRoomDiscoveryMatches(
+    viewerAuthUserId,
+    filters,
+    locations,
+    viewer,
+  );
+  const recoverySuggestions = listings.length
+    ? []
+    : await loadRoomRecoverySuggestions(
+        viewerAuthUserId,
+        filters,
+        locations,
+        viewer,
+      );
+  const selectedLocality = filters.communityId
+    ? locations.find((location) => location.id === filters.communityId)
+    : null;
 
   return {
     listings,
+    recoverySuggestions,
     locations,
     viewer,
     selectedLocality,

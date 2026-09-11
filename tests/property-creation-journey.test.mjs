@@ -65,15 +65,17 @@ test("/list-property is an authenticated property-only entry point", () => {
   assert.match(flowSource, /Room Available/);
   assert.match(flowSource, /Flat \/ Shared Flat/);
   assert.match(flowSource, /PG Available/);
-  assert.match(flowSource, /flow === "property" \? propertyPostTypeOptions/);
+  assert.match(flowSource, /flow === "property"[\s\S]*?propertyPostTypeOptions/);
   assert.match(actionSource, /savePropertyListingAction/);
   assert.match(actionSource, /input\.postType !== "Room Available"/);
   assert.match(actionSource, /input\.postType !== "PG Available"/);
 });
 
 test("navbar, homepage, and empty room discovery link to property creation", () => {
+  assert.match(navbarSource, /href="\/list-property"/);
+  assert.match(homepageSource, /href: "\/list-property"/);
+  assert.match(roomsSource, /href="\/list-property"/);
   for (const source of [navbarSource, homepageSource, roomsSource]) {
-    assert.match(source, /href="\/list-property"/);
     assert.match(source, /List a Property/);
   }
 });
@@ -93,12 +95,12 @@ test("flat and shared-flat choices map to discoverable structured room types", (
   assert.match(discoveryDataSource, /\["SHARED_ROOM", "ENTIRE_PLACE"\]/);
 });
 
-test("successful listings refresh discovery and redirect after images finish", () => {
+test("successful listings refresh discovery and redirect to matches after images finish", () => {
   assert.match(actionSource, /revalidatePath\("\/rooms"\)/);
   assert.match(actionSource, /revalidatePath\("\/community\/post\/" \+ data\.id\)/);
   assert.match(flowSource, /imageSaveState === "complete"/);
   assert.match(flowSource, /router\.replace/);
-  assert.match(flowSource, /"\/community\/post\/" \+ encodeURIComponent\(actionState\.postId\)/);
+  assert.match(flowSource, /"\/matches\/post\/" \+ encodeURIComponent\(actionState\.postId\)/);
 });
 
 test("the existing seed remains free of fake listing records", () => {

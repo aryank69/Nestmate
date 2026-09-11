@@ -74,7 +74,7 @@ export function SearchTeamsPage({ data }: { data: SearchTeamHubData }) {
           <label className="mt-4 grid gap-1.5 text-xs font-semibold">Team name
             <input value={name} onChange={(event) => setName(event.target.value)} maxLength={80} required placeholder="Our Bengaluru home search" className="h-11 rounded-xl border border-input bg-background px-3 text-sm outline-none focus:border-primary focus:ring-3 focus:ring-ring/15" />
           </label>
-          <Button className="mt-4 w-full" disabled={pending || name.trim().length < 2}>{pending ? <LoaderCircle className="size-4 animate-spin" /> : <Plus className="size-4" />}Create team</Button>
+          <Button type="submit" className="mt-4 w-full" disabled={pending || name.trim().length < 2}>{pending ? <LoaderCircle className="size-4 animate-spin" /> : <Plus className="size-4" />}Create team</Button>
         </form>
 
         <section>

@@ -88,7 +88,7 @@ export async function inviteSearchTeamMemberAction(input: {
   const teamId = validUuid(input.teamId);
   const email = typeof input.email === "string" ? input.email.trim().toLowerCase() : "";
   if (!teamId || !/^\S+@\S+\.\S+$/.test(email) || email.length > 254) {
-    return { success: false, message: "Enter a valid NestMate account email." };
+    return { success: false, message: "Enter a valid Roomzi account email." };
   }
   const context = await authenticatedTeamContext();
   if (!context) return { success: false, message: "Please log in to invite a teammate." };
@@ -97,7 +97,7 @@ export async function inviteSearchTeamMemberAction(input: {
     select: { id: true },
   });
   if (!recipient || recipient.id === context.user.id) {
-    return { success: false, message: "Choose another existing NestMate member." };
+    return { success: false, message: "Choose another existing Roomzi member." };
   }
   const now = new Date();
   const existing = await prisma.searchTeamInvite.findUnique({

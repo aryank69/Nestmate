@@ -631,7 +631,7 @@ export function CommunityPage({
           <div className="mx-auto max-w-5xl">
             <div className="flex items-center gap-2 text-sm font-semibold text-primary">
               <MessagesSquare aria-hidden="true" className="size-4" />
-              NestMate Community
+              Roomzi Community
             </div>
 
             <div className="mt-4 grid gap-7 lg:grid-cols-[1fr_auto] lg:items-end">

@@ -126,7 +126,7 @@ export function AuthForm({
               <HouseHeart aria-hidden="true" className="size-5.5" />
             </span>
             <span className="text-2xl font-semibold tracking-[-0.05em]">
-              Nest<span className="text-primary">Mate</span>
+              Room<span className="text-primary">zi</span>
             </span>
           </Link>
 
@@ -171,7 +171,7 @@ export function AuthForm({
               <HouseHeart aria-hidden="true" className="size-5" />
             </span>
             <span className="text-xl font-semibold tracking-[-0.045em]">
-              Nest<span className="text-primary">Mate</span>
+              Room<span className="text-primary">zi</span>
             </span>
           </Link>
 
@@ -189,7 +189,7 @@ export function AuthForm({
             <p className="mt-3 leading-7 text-muted-foreground">
               {isLogin
                 ? "Log in to view your profile and continue your housing search."
-                : "Join NestMate to create your profile and connect with local communities."}
+                : "Join Roomzi to create your profile and connect with local communities."}
             </p>
 
             <Button
@@ -367,7 +367,7 @@ export function AuthForm({
             </form>
 
             <p className="mt-6 text-center text-sm text-muted-foreground">
-              {isLogin ? "New to NestMate?" : "Already have an account?"}{" "}
+              {isLogin ? "New to Roomzi?" : "Already have an account?"}{" "}
               <Link
                 href={isLogin ? `/signup?next=${encodeURIComponent(nextPath)}` : `/login?next=${encodeURIComponent(nextPath)}`}
                 className="font-semibold text-primary underline-offset-4 hover:underline"

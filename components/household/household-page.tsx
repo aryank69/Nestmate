@@ -219,7 +219,7 @@ function HouseholdCard({
         <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-3 text-xs leading-5 text-amber-900">
           Amounts and notes are visible only to active members. Do not store bank details,
           payment credentials, full account numbers, or sensitive identity documents here.
-          NestMate records coordination only and does not collect or transfer money.
+          Roomzi records coordination only and does not collect or transfer money.
         </p>
       </header>
 

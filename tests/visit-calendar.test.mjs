@@ -35,7 +35,7 @@ test("calendar updates and cancellations preserve UID and advance revision with 
     visitId: "52000000-0000-4000-8000-0000000000a1",
     scheduledAt: "2026-09-07T10:30:00Z",
     listingTitle: "Room", locality: "Koramangala", city: "Bengaluru",
-    listingUrl: "https://nestmate.example/community/post/listing-1",
+    listingUrl: "https://roomzi.example/community/post/listing-1",
     generatedAt: new Date("2026-09-05T09:00:00Z"),
     updatedAt: "2026-09-05T09:00:00Z",
   };
@@ -63,16 +63,16 @@ test("ICS output is provider-neutral, escaped, and contains only privacy-safe vi
     listingTitle: "Sunny room, near metro; furnished",
     locality: "Koramangala",
     city: "Bengaluru",
-    listingUrl: "https://nestmate.example/community/post/listing-1",
+    listingUrl: "https://roomzi.example/community/post/listing-1",
     generatedAt: new Date("2026-09-05T09:00:00.000Z"),
   });
 
   assert.match(event, /^BEGIN:VCALENDAR\r\nVERSION:2\.0\r\n/);
   assert.match(event, /DTSTART:20260907T103000Z/);
   assert.match(event, /DTEND:20260907T113000Z/);
-  assert.match(event, /SUMMARY:NestMate visit: Sunny room\\, near metro\\; furnished/);
+  assert.match(event, /SUMMARY:Roomzi visit: Sunny room\\, near metro\\; furnished/);
   assert.match(event, /LOCATION:Koramangala\\, Bengaluru \(approximate\)/);
-  assert.match(event, /URL:https:\/\/nestmate\.example\/community\/post\/listing-1/);
+  assert.match(event, /URL:https:\/\/roomzi\.example\/community\/post\/listing-1/);
   assert.match(event, /STATUS:CONFIRMED/);
   assert.doesNotMatch(event, /private note|gate code|latitude|longitude|counterpart/i);
   assert.match(event, /END:VCALENDAR\r\n$/);

@@ -318,7 +318,7 @@ function DocumentSpace({
           </div>
           <p className="mt-3 flex items-start gap-2 text-xs leading-5 text-muted-foreground">
             <ShieldAlert aria-hidden="true" className="mt-0.5 size-3.5 shrink-0 text-amber-600" />
-            Share only what is necessary. Redact unrelated ID numbers and financial details. Reviewed or Acknowledged is a personal tracking status—not a signature, legal acceptance, or NestMate verification.
+            Share only what is necessary. Redact unrelated ID numbers and financial details. Reviewed or Acknowledged is a personal tracking status—not a signature, legal acceptance, or Roomzi verification.
           </p>
         </div> : null}
 

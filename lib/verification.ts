@@ -21,7 +21,7 @@ const badgeDefinitions: Record<VerificationKind, TrustBadge> = {
   PROFILE_COMPLETE: {
     kind: "PROFILE_COMPLETE",
     label: "Profile complete",
-    description: "The member completed NestMate’s core profile and preference fields.",
+    description: "The member completed Roomzi’s core profile and preference fields.",
     strength: "basic",
   },
   LISTING_DETAILS: {

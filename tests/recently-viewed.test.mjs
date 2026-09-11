@@ -156,7 +156,8 @@ test("history retrieval stays chronological and drops unavailable targets", () =
 });
 
 test("listing and flatmate detail pages record authenticated recent views", () => {
-  assert.match(listingPage, /authUserId \? <RecentViewTracker targetType="POST"/);
+  assert.match(listingPage, /if \(error \|\| !authUserId\)/);
+  assert.match(listingPage, /<RecentViewTracker targetType="POST"/);
   assert.match(profilePage, /<RecentViewTracker targetType="USER"/);
   assert.match(profilePage, /if \(!profile\) notFound\(\)/);
 });

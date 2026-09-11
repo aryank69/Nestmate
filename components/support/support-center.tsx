@@ -75,7 +75,7 @@ export function SupportCenter({ cases }: { cases: SupportCaseSummary[] }) {
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
             Ask for help or appeal a content or account decision. Only you and
-            authorized NestMate reviewers can see your case.
+            authorized Roomzi reviewers can see your case.
           </p>
         </div>
         <Button type="button" onClick={() => setShowForm((value) => !value)}>

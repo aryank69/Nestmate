@@ -1,15 +1,15 @@
-# NestMate
+# Roomzi
 
 Find your place. Find your people.
 
-NestMate is a Next.js App Router application for locality-based housing communities, profiles, compatibility, private chat, and community chat. It uses TypeScript, Tailwind CSS, shadcn/ui, Prisma, and Supabase PostgreSQL/Auth/Realtime.
+Roomzi is a Next.js App Router application for locality-based housing communities, profiles, compatibility, private chat, and community chat. It uses TypeScript, Tailwind CSS, shadcn/ui, Prisma, and Supabase PostgreSQL/Auth/Realtime.
 
 ## Prerequisites
 
 - [Node.js 22 or newer](https://nodejs.org/)
 - npm (included with Node.js)
 - Git and access to this repository
-- Access to the shared NestMate Supabase project
+- Access to the shared Roomzi Supabase project
 
 Use the Node.js version currently installed for the project when possible. Do not commit local environment files or copy credentials into issues, commits, or pull requests.
 
@@ -18,8 +18,8 @@ Use the Node.js version currently installed for the project when possible. Do no
 1. Clone the repository and enter the project:
 
    ```bash
-   git clone https://github.com/aryank69/Nestmate.git
-   cd Nestmate
+   git clone https://github.com/aryank69/Nestmate.git Roomzi
+   cd Roomzi
    ```
 
 2. Install the exact dependency versions from `package-lock.json`:
@@ -69,9 +69,11 @@ Use the Node.js version currently installed for the project when possible. Do no
 
 | Variable | Required | Purpose |
 | --- | --- | --- |
-| `DATABASE_URL` | Yes | Supavisor transaction-pooler URL on port `6543` for application and seed traffic. Keep `[YOUR-PASSWORD]` in the template; the app injects the encoded password from `DATABASE_PASSWORD`. |
-| `DIRECT_URL` | Yes | Supavisor session-pooler URL on port `5432` for Prisma migrations and administrative commands. Keep the same password placeholder. |
-| `DATABASE_PASSWORD` | Yes | Raw Supabase database password. This is secret and must never be committed. |
+| `DATABASE_URL` | Yes | Supavisor transaction-pooler URL on port `6543` for application and seed traffic. Keep `[YOUR-PASSWORD]` in the template and at least `uselibpqcompat=true&sslmode=require`; the app injects the encoded password from `DATABASE_PASSWORD`. |
+| `DATABASE_POOL_MAX` | No | Maximum runtime PostgreSQL connections per app process. Defaults to `1`, which is the safe starting point for Supavisor transaction mode. |
+| `DIRECT_URL` | Yes | Supavisor session-pooler URL on port `5432` for Prisma migrations and administrative commands. Keep the same password placeholder and at least `uselibpqcompat=true&sslmode=require`. |
+| `DATABASE_PASSWORD` | Yes | Password for the least-privilege application role used by `DATABASE_URL`. This is secret and must never be committed. |
+| `DIRECT_DATABASE_PASSWORD` | Yes | Administrative Supabase database password used only by `DIRECT_URL` for migrations. Never expose it to the application runtime or browser. For backward-compatible local setup, Prisma falls back to `DATABASE_PASSWORD` when this variable is absent. |
 | `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project API URL, for example `https://PROJECT_REF.supabase.co`. |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Yes | Supabase publishable key used by browser and server clients. It is intentionally client-visible; authorization still depends on RLS. Never substitute a secret or service-role key. |
 | `NEXT_PUBLIC_SITE_URL` | Yes | App origin used to build Auth callback links. Use `http://localhost:3002` locally and the canonical HTTPS origin in production. |
@@ -85,16 +87,30 @@ For a developer joining the existing project:
 1. Ask the project owner to invite the developer to the Supabase organization/project with the minimum role needed for development.
 2. In the Supabase dashboard, use **Connect** to copy the transaction-pooler and session-pooler connection strings. Put them in `DATABASE_URL` and `DIRECT_URL`, preserving the `[YOUR-PASSWORD]` placeholder used by this repository.
 3. Get the project URL and an active publishable key from the project's API settings. Put them in `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
-4. Share the database password through a password manager or another approved private channel, then store it only in the local `.env` file as `DATABASE_PASSWORD`.
+4. Share the runtime-role and administrative database passwords through a password manager or another approved private channel. Store them only in the local `.env` as `DATABASE_PASSWORD` and `DIRECT_DATABASE_PASSWORD`; never deploy `DIRECT_DATABASE_PASSWORD` to a runtime that does not execute migrations.
+5. Enable **Enforce SSL on incoming connections** in Supabase Database settings. `uselibpqcompat=true&sslmode=require` is the portable encrypted baseline for the installed `pg` driver. For certificate and hostname verification, download the project's Supabase CA certificate and configure the deployment driver with `sslmode=verify-full` plus that certificate.
 5. In **Authentication → URL Configuration**:
    - Use the production origin as the Site URL when a production deployment exists; otherwise use `http://localhost:3002`.
    - Add `http://localhost:3002/**` to the redirect allow list for local email confirmation and OAuth callbacks.
-   - Add the exact production `/auth/callback` URL and any approved preview URLs before testing those environments.
-6. In **Authentication → Providers**, keep Email enabled. For Google sign-in, enable Google and configure its client ID and secret. The Google Cloud OAuth client's authorized redirect URI is `https://PROJECT_REF.supabase.co/auth/v1/callback`; the app then returns through NestMate's `/auth/callback` route.
-7. Run `npm run db:deploy`. The committed migrations create the application schema, Auth profile trigger, RLS policies, RPC functions, and Realtime publication entries for private and locality-community messages.
-8. Run `npm run db:seed` if the shared development database does not yet contain the seeded Bengaluru, Mumbai, Pune, and Hyderabad localities.
+   - Add the exact production `https://YOUR_DOMAIN/auth/callback` URL. Avoid broad production wildcards; add preview URLs only when they are intentionally supported.
+6. In **Authentication → Providers**, keep Email enabled. For Google sign-in, enable Google and configure its client ID and secret. The Google Cloud OAuth client's authorized redirect URI is `https://PROJECT_REF.supabase.co/auth/v1/callback`; the app then returns through Roomzi's `/auth/callback` route.
+7. Run `npm run db:deploy`. The committed migrations create the application schema, Auth profile trigger, RLS policies, RPC functions, private Storage buckets, scheduled jobs, and Realtime publication entries for private and locality-community messages.
+8. Confirm **Storage** contains two private buckets created by the migrations:
+   - `listing-images`: JPG, PNG, or WebP files up to 5 MB. Valid listing images are served through short-lived signed URLs; only listing owners can upload/delete their paths.
+   - `match-documents`: PDF, JPG, or PNG files up to 10 MB. Only authorized participants in the finalized match can upload, download, revoke, or delete documents.
+9. Run `npm run db:seed` if the shared development database does not yet contain the seeded Bengaluru, Mumbai, Pune, and Hyderabad localities.
 
-No Storage bucket or Storage credentials are required by the current application. Do not create Auth users in the seed; users are created through Supabase Auth and synchronized to the NestMate profile tables.
+Do not create Auth users in the seed; users are created through Supabase Auth and synchronized to the Roomzi profile tables.
+
+## Production security checklist
+
+- Set `NEXT_PUBLIC_SITE_URL` to the canonical HTTPS origin. Production Auth callbacks and public listing metadata deliberately fail closed when it is missing or invalid.
+- In **Authentication → URL Configuration**, set the same origin as Site URL and allow the exact `/auth/callback` URL.
+- Keep Email confirmation enabled. Enable only configured OAuth providers and confirm Google uses Supabase's `/auth/v1/callback` redirect URI.
+- In **Authentication → Attack Protection**, enable leaked-password protection when the Supabase plan supports it. Also keep the minimum password length at eight or higher and enable CAPTCHA/rate limits appropriate for public signup.
+- Review the Supabase Security Advisor after each production migration. The internal `SafetyActivity`, private analytics-event, and `_prisma_migrations` tables intentionally have RLS with no user policies so Data API access is denied.
+- Verify both Storage buckets remain private and retain their file-size, MIME-type, participant/owner, and revocation policies.
+- Confirm the recurring-expense and household-bill-reminder cron jobs are active and contain no credentials or external URLs.
 
 Official references: [database connections](https://supabase.com/docs/guides/database/connecting-to-postgres), [Auth redirect URLs](https://supabase.com/docs/guides/auth/redirect-urls), and [Google login](https://supabase.com/docs/guides/auth/social-login/auth-google).
 

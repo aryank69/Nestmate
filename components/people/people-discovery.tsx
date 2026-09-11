@@ -3,6 +3,7 @@ import {
   BriefcaseBusiness,
   CalendarDays,
   ChevronDown,
+  ClipboardPenLine,
   IndianRupee,
   MapPin,
   MessageCircle,
@@ -20,6 +21,7 @@ import { SafetyActions } from "@/components/trust-safety/safety-actions";
 import { TrustScoreIndicator } from "@/components/trust/trust-score-indicator";
 import { SaveSearchButton } from "@/components/saved/saved-controls";
 import { RecommendationSummary } from "@/components/recommendations/recommendation-summary";
+import { ZeroResultRecovery } from "@/components/discovery/zero-result-recovery";
 import { ResponsivenessIndicator } from "@/components/responsiveness-indicator";
 import { ShortlistProfileButton } from "@/components/people/shortlist-profile-button";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -27,7 +29,11 @@ import { TrustBadges } from "@/components/verification/trust-badges";
 import { activePeopleFilterCount, peopleFilterQuery } from "@/lib/discovery";
 import { cn } from "@/lib/utils";
 import type { CommunityLocationOption } from "@/types/community";
-import type { PeopleDiscoveryProfile, PeopleFilters } from "@/types/discovery";
+import type {
+  PeopleDiscoveryProfile,
+  PeopleFilters,
+  ZeroResultSuggestion,
+} from "@/types/discovery";
 
 const inputClassName =
   "h-11 w-full rounded-xl border border-input bg-background px-3 text-sm text-foreground outline-none transition-[border-color,box-shadow] focus:border-primary focus:ring-3 focus:ring-ring/15";
@@ -92,10 +98,12 @@ export function PeopleDiscovery({
   profiles,
   locations,
   filters,
+  recoverySuggestions,
 }: {
   profiles: PeopleDiscoveryProfile[];
   locations: CommunityLocationOption[];
   filters: PeopleFilters;
+  recoverySuggestions: ZeroResultSuggestion[];
 }) {
   const activeFilterCount = activePeopleFilterCount(filters);
   const filterQuery = peopleFilterQuery(filters);
@@ -116,6 +124,13 @@ export function PeopleDiscovery({
             <p className="mt-5 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
               Search by locality, budget, timing, and lifestyle. Compatibility scores use the transparent preferences in your profile.
             </p>
+            <Link
+              href="/post-requirement"
+              className={cn(buttonVariants({ variant: "outline" }), "mt-5")}
+            >
+              <ClipboardPenLine aria-hidden="true" className="size-4" />
+              Post a Requirement
+            </Link>
 
             <div className="surface-card mt-8 p-4 sm:p-5">
               <form method="get" action="/flatmates" className="space-y-4">
@@ -135,7 +150,7 @@ export function PeopleDiscovery({
                     label="Preferred locality"
                     name="locality"
                     value={filters.localityId}
-                    options={locations.map((location) => [location.id, `${location.locality}, ${location.city}`])}
+                    options={locations.map((location) => [location.localityId, `${location.locality}, ${location.city}`])}
                   />
                   <FilterSelect
                     label="Sort matches"
@@ -240,6 +255,10 @@ export function PeopleDiscovery({
               <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground">
                 Try a wider budget, fewer lifestyle filters, or a lower compatibility threshold.
               </p>
+              <ZeroResultRecovery
+                suggestions={recoverySuggestions}
+                resultLabel="possible match"
+              />
               <Link href="/flatmates" className={cn(buttonVariants({ variant: "outline" }), "mt-6")}>Clear all filters</Link>
             </div>
           )}
@@ -300,6 +319,30 @@ export function PeopleCard({
 
       <p className="mt-4 text-sm leading-6 text-muted-foreground">{profile.bio}</p>
 
+      {profile.activeRequirement ? (
+        <Link
+          href={`/community/post/${encodeURIComponent(profile.activeRequirement.id)}`}
+          className="mt-4 rounded-2xl border border-primary/15 bg-primary/[0.045] p-4 outline-none transition-colors hover:bg-primary/[0.075] focus-visible:ring-3 focus-visible:ring-ring/25"
+        >
+          <span className="flex flex-wrap items-center justify-between gap-2">
+            <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.1em] text-primary">
+              <ClipboardPenLine aria-hidden="true" className="size-3.5" />
+              Active requirement · {profile.activeRequirement.category}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              {profile.activeRequirement.locality}, {profile.activeRequirement.city}
+            </span>
+          </span>
+          <span className="mt-2 block text-sm font-semibold">
+            {profile.activeRequirement.title}
+          </span>
+          <span className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+            <span>{profile.activeRequirement.budgetLabel}</span>
+            <span>{profile.activeRequirement.moveInLabel}</span>
+          </span>
+        </Link>
+      ) : null}
+
       <div className="mt-4 grid gap-2 sm:grid-cols-2">
         <p className="flex items-center gap-2 rounded-xl border border-border/70 bg-muted/40 px-3 py-2.5 text-sm font-semibold">
           <IndianRupee aria-hidden="true" className="size-4 text-primary" />
@@ -343,13 +386,13 @@ export function PeopleCard({
 
       <RecommendationSummary result={profile.recommendation} />
 
-      <footer className="mt-auto flex flex-col gap-2 border-t border-border/70 pt-4 sm:flex-row">
+      <footer className="mt-auto grid grid-cols-1 gap-2 border-t border-border/70 pt-4 sm:grid-cols-2">
         <ActivityStageControl
           targetType="FLATMATE"
           targetId={profile.id}
           initialStage={profile.activityStage}
           compact
-          className="w-full"
+          className="w-full sm:col-span-2"
         />
         {!detail ? (
           <Link
@@ -362,7 +405,7 @@ export function PeopleCard({
         ) : null}
         <Link
           href={{ pathname: "/chat", query: { user: profile.authUserId } }}
-          className={cn(buttonVariants(), "w-full")}
+          className={cn(buttonVariants(), "w-full", detail && "sm:col-span-2")}
         >
           <MessageCircle aria-hidden="true" className="size-4" />
           Message {profile.name.split(" ")[0]}

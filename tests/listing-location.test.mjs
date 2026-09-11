@@ -116,6 +116,7 @@ test("non-listing post types never persist property coordinates", () => {
     postType: "Need a Room",
     housingType: "Private room",
     housingFeature: "Semi-furnished",
+    occupationStatus: "Working professional",
   });
 
   assert.equal(result.success, true);

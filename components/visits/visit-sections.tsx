@@ -828,7 +828,7 @@ function VisitOutcomeEditor({ visit }: { visit: VisitRequestView }) {
           </h3>
           <p className="mt-1 flex items-start gap-1.5 text-xs leading-5 text-muted-foreground">
             <LockKeyhole aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" />
-            Your selection and note are visible only to you. NestMate uses a coarse signal to improve your recommendations.
+            Your selection and note are visible only to you. Roomzi uses a coarse signal to improve your recommendations.
           </p>
         </div>
       </div>

@@ -1,5 +1,5 @@
 import type {
-  NestMateNotification,
+  RoomziNotification,
   NotificationRow,
   NotificationType,
 } from "@/types/notification";
@@ -17,7 +17,7 @@ export const notificationTypeLabels: Record<NotificationType, string> = {
 
 export function normalizeNotification(
   row: NotificationRow,
-): NestMateNotification {
+): RoomziNotification {
   return {
     id: row.id,
     type: row.type,
@@ -31,8 +31,8 @@ export function normalizeNotification(
 }
 
 export function mergeNotification(
-  notifications: NestMateNotification[],
-  incoming: NestMateNotification,
+  notifications: RoomziNotification[],
+  incoming: RoomziNotification,
 ) {
   const withoutIncoming = notifications.filter(
     (notification) => notification.id !== incoming.id,
@@ -69,7 +69,7 @@ export function formatNotificationTime(value: string, now = new Date()) {
 }
 
 export function unreadNotificationCount(
-  notifications: NestMateNotification[],
+  notifications: RoomziNotification[],
 ) {
   return notifications.filter((notification) => !notification.readAt).length;
 }

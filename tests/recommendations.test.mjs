@@ -28,6 +28,7 @@ const compatibility = compile("../lib/compatibility.ts");
 const listingFreshness = compile("../lib/listing-freshness.ts");
 const visitOutcomes = compile("../lib/visit-outcomes.ts");
 const trustScore = compile("../lib/trust-score.ts");
+const moveInReadiness = compile("../lib/move-in-readiness.ts");
 const recommendations = compile("../lib/recommendations.ts", (id) =>
   id === "@/lib/compatibility"
     ? compatibility
@@ -37,6 +38,8 @@ const recommendations = compile("../lib/recommendations.ts", (id) =>
         ? visitOutcomes
       : id === "@/lib/trust-score"
         ? trustScore
+      : id === "@/lib/move-in-readiness"
+        ? moveInReadiness
       : require(id),
 );
 const discovery = compile("../lib/discovery.ts");

@@ -71,7 +71,7 @@ export function calculateResponsiveness(
     return {
       level: "active",
       label: "Active recently",
-      description: "Based on broad recent NestMate activity, not online status.",
+      description: "Based on broad recent Roomzi activity, not online status.",
       recommendationAlignment: 0.7,
     };
   }

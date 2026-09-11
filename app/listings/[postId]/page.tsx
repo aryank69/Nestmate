@@ -40,12 +40,12 @@ export async function generateMetadata({
   const listing = await loadPublicListing(postId);
   if (!listing) {
     return {
-      title: "Listing unavailable | NestMate",
+      title: "Listing unavailable | Roomzi",
       robots: { index: false, follow: false },
     };
   }
 
-  const title = `${listing.seoTitle} | NestMate`;
+  const title = `${listing.seoTitle} | Roomzi`;
   const description = publicListingMetadataDescription({
     category: listing.category,
     locality: listing.locality,
@@ -67,7 +67,7 @@ export async function generateMetadata({
     robots: { index: true, follow: true },
     openGraph: {
       type: "article",
-      siteName: "NestMate",
+      siteName: "Roomzi",
       locale: "en_IN",
       title,
       description,

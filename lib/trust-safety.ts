@@ -59,7 +59,7 @@ export function validateReportInput(input: ReportInput) {
   };
 }
 
-export function isValidNestMateUserId(value: string) {
+export function isValidRoomziUserId(value: string) {
   const cleaned = value.trim();
   return cleaned.length > 0 && cleaned.length <= 128;
 }

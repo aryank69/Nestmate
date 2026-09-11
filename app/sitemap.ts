@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 
 import { loadPublicListingSitemapEntries } from "@/lib/public-listing-data";
-import { nestMateSiteUrl, publicListingUrl } from "@/lib/public-listings";
+import { roomziSiteUrl, publicListingUrl } from "@/lib/public-listings";
 
 export const dynamic = "force-dynamic";
 
@@ -9,7 +9,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const listings = await loadPublicListingSitemapEntries();
   return [
     {
-      url: nestMateSiteUrl(),
+      url: roomziSiteUrl(),
       changeFrequency: "weekly",
       priority: 1,
     },

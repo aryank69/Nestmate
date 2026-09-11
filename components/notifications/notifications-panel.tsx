@@ -29,7 +29,7 @@ import {
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import type {
-  NestMateNotification,
+  RoomziNotification,
   NotificationRow,
   NotificationType,
 } from "@/types/notification";
@@ -50,7 +50,7 @@ export function NotificationsPanel({
   initialError,
   initialReminderCount = 0,
 }: {
-  initialNotifications: NestMateNotification[];
+  initialNotifications: RoomziNotification[];
   initialError: string;
   initialReminderCount?: number;
 }) {
@@ -112,7 +112,7 @@ export function NotificationsPanel({
     };
   }, [supabase]);
 
-  const markRead = async (notification: NestMateNotification) => {
+  const markRead = async (notification: RoomziNotification) => {
     if (notification.readAt) return true;
     setPendingId(notification.id);
     const readAt = new Date().toISOString();
@@ -137,7 +137,7 @@ export function NotificationsPanel({
     return true;
   };
 
-  const openNotification = async (notification: NestMateNotification) => {
+  const openNotification = async (notification: RoomziNotification) => {
     const marked = await markRead(notification);
     if (marked) router.push(notification.href);
   };

@@ -6,7 +6,7 @@ import { resolveDatabaseUrl } from "./lib/database-url";
 
 const directUrl = resolveDatabaseUrl(
   env("DIRECT_URL"),
-  process.env.DATABASE_PASSWORD,
+  process.env.DIRECT_DATABASE_PASSWORD ?? process.env.DATABASE_PASSWORD,
   "DIRECT_URL",
 );
 

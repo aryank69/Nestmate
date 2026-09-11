@@ -466,90 +466,97 @@ enum SearchTeamVoteChoice {
   NO
 }
 
+enum OnboardingIntent {
+  FIND_ROOM
+  FIND_ROOMMATE
+  LIST_PROPERTY
+  POST_REQUIREMENT
+}
+
 model User {
-  id                             String                          @id @default(cuid())
-  authUserId                     String                          @unique @db.Uuid
+  id                             String                                 @id @default(cuid())
+  authUserId                     String                                 @unique @db.Uuid
   name                           String
-  email                          String?                         @unique
-  dateOfBirth                    DateTime?                       @db.Date
+  email                          String?                                @unique
+  dateOfBirth                    DateTime?                              @db.Date
   profession                     String?
   companyOrCollege               String?
-  bio                            String?                         @db.VarChar(500)
-  createdAt                      DateTime                        @default(now())
-  updatedAt                      DateTime                        @updatedAt
+  bio                            String?                                @db.VarChar(500)
+  createdAt                      DateTime                               @default(now())
+  updatedAt                      DateTime                               @updatedAt
   memberships                    CommunityMember[]
   posts                          Post[]
   preferences                    UserPreferences?
-  conversationsAsParticipantOne  Conversation[]                  @relation("ConversationParticipantOne")
-  conversationsAsParticipantTwo  Conversation[]                  @relation("ConversationParticipantTwo")
+  conversationsAsParticipantOne  Conversation[]                         @relation("ConversationParticipantOne")
+  conversationsAsParticipantTwo  Conversation[]                         @relation("ConversationParticipantTwo")
   sentMessages                   Message[]
   sentCommunityMessages          CommunityMessage[]
-  blocksCreated                  UserBlock[]                     @relation("UserBlockBlocker")
-  blocksReceived                 UserBlock[]                     @relation("UserBlockBlocked")
-  reportsSubmitted               Report[]                        @relation("ReportReporter")
-  notificationsReceived          Notification[]                  @relation("NotificationRecipient")
-  notificationsCreated           Notification[]                  @relation("NotificationActor")
+  blocksCreated                  UserBlock[]                            @relation("UserBlockBlocker")
+  blocksReceived                 UserBlock[]                            @relation("UserBlockBlocked")
+  reportsSubmitted               Report[]                               @relation("ReportReporter")
+  notificationsReceived          Notification[]                         @relation("NotificationRecipient")
+  notificationsCreated           Notification[]                         @relation("NotificationActor")
   savedPosts                     SavedPost[]
   savedSearches                  SavedSearch[]
-  shortlistsCreated              ShortlistedProfile[]            @relation("ProfileShortlistOwner")
-  shortlistedBy                  ShortlistedProfile[]            @relation("ProfileShortlistTarget")
-  recentViews                    RecentView[]                    @relation("RecentViewViewer")
-  profileViews                   RecentView[]                    @relation("RecentViewTargetUser")
-  visitsRequested                VisitRequest[]                  @relation("VisitRequester")
-  visitsOwned                    VisitRequest[]                  @relation("VisitOwner")
+  shortlistsCreated              ShortlistedProfile[]                   @relation("ProfileShortlistOwner")
+  shortlistedBy                  ShortlistedProfile[]                   @relation("ProfileShortlistTarget")
+  recentViews                    RecentView[]                           @relation("RecentViewViewer")
+  profileViews                   RecentView[]                           @relation("RecentViewTargetUser")
+  visitsRequested                VisitRequest[]                         @relation("VisitRequester")
+  visitsOwned                    VisitRequest[]                         @relation("VisitOwner")
   visitOutcomes                  VisitOutcome[]
   visitAvailabilityRules         VisitAvailabilityRule[]
   visitAvailabilityBlocks        VisitAvailabilityBlock[]
   visitSlotPreferences           VisitSlotPreference[]
   visitAttendances               VisitAttendance[]
   visitFeedback                  VisitFeedback[]
-  listingRealityFeedback        ListingRealityFeedback[]
+  listingRealityFeedback         ListingRealityFeedback[]
   verificationChecks             VerificationCheck[]
   safetyActivities               SafetyActivity[]
   safetyFlags                    SafetyFlag[]
   moderatorMembership            ModeratorMembership?
-  moderationState                UserModerationState?            @relation("ModeratedUser")
-  moderationStateUpdates         UserModerationState[]           @relation("ModerationStateUpdater")
+  moderationState                UserModerationState?                   @relation("ModeratedUser")
+  moderationStateUpdates         UserModerationState[]                  @relation("ModerationStateUpdater")
   moderationReviews              ModerationReview[]
-  moderationActions              ModerationAuditLog[]            @relation("ModeratorAudit")
-  moderationActionsReceived      ModerationAuditLog[]            @relation("ModerationSubject")
+  moderationActions              ModerationAuditLog[]                   @relation("ModeratorAudit")
+  moderationActionsReceived      ModerationAuditLog[]                   @relation("ModerationSubject")
   supportCases                   SupportCase[]
   supportMessages                SupportCaseMessage[]
   supportNotes                   SupportCaseInternalNote[]
-  interestsTracked               InterestActivity[]              @relation("InterestActivityOwner")
-  interestFrom                   InterestActivity[]              @relation("InterestActivityTargetUser")
+  interestsTracked               InterestActivity[]                     @relation("InterestActivityOwner")
+  interestFrom                   InterestActivity[]                     @relation("InterestActivityTargetUser")
   reminders                      Reminder[]
-  moveInChecklistsOwned          MoveInChecklist[]               @relation("MoveInChecklistOwner")
-  moveInChecklistsAsTarget       MoveInChecklist[]               @relation("MoveInChecklistTargetUser")
-  documentSpacesAsParticipantOne FinalizedDocumentSpace[]        @relation("DocumentSpaceParticipantOne")
-  documentSpacesAsParticipantTwo FinalizedDocumentSpace[]        @relation("DocumentSpaceParticipantTwo")
-  documentSpacesAsFlatmateTarget FinalizedDocumentSpace[]        @relation("DocumentSpaceFlatmateTarget")
-  sharedDocuments                SharedDocument[]                @relation("SharedDocumentUploader")
+  moveInChecklistsOwned          MoveInChecklist[]                      @relation("MoveInChecklistOwner")
+  moveInChecklistsAsTarget       MoveInChecklist[]                      @relation("MoveInChecklistTargetUser")
+  documentSpacesAsParticipantOne FinalizedDocumentSpace[]               @relation("DocumentSpaceParticipantOne")
+  documentSpacesAsParticipantTwo FinalizedDocumentSpace[]               @relation("DocumentSpaceParticipantTwo")
+  documentSpacesAsFlatmateTarget FinalizedDocumentSpace[]               @relation("DocumentSpaceFlatmateTarget")
+  sharedDocuments                SharedDocument[]                       @relation("SharedDocumentUploader")
   documentAcknowledgements       SharedDocumentAcknowledgement[]
   finalizedMilestones            FinalizedMatchMilestone[]
-  documentSpacesClosed           FinalizedDocumentSpace[]        @relation("DocumentSpaceClosedBy")
-  finalizedMatchStatusChanges    FinalizedMatchStatusChange[]    @relation("FinalizedMatchStatusActor")
+  documentSpacesClosed           FinalizedDocumentSpace[]               @relation("DocumentSpaceClosedBy")
+  finalizedMatchStatusChanges    FinalizedMatchStatusChange[]           @relation("FinalizedMatchStatusActor")
   householdMemberships           HouseholdMember[]
-  householdsArchived             Household[]                     @relation("HouseholdArchivedBy")
-  householdItemsCreated          HouseholdItem[]                 @relation("HouseholdItemCreator")
-  householdItemsAssigned         HouseholdItem[]                 @relation("HouseholdItemAssignee")
-  householdExpensesCreated       HouseholdExpense[]              @relation("HouseholdExpenseCreator")
-  householdExpensesPaid          HouseholdExpense[]              @relation("HouseholdExpensePayer")
-  householdExpenseShares         HouseholdExpenseShare[]         @relation("HouseholdExpenseShareMember")
-  householdExpenseCredits        HouseholdExpenseShare[]         @relation("HouseholdExpenseShareCreditor")
-  householdSettlementsFrom       HouseholdSettlement[]           @relation("HouseholdSettlementFrom")
-  householdSettlementsTo         HouseholdSettlement[]           @relation("HouseholdSettlementTo")
-  householdSettlementsRecorded   HouseholdSettlement[]           @relation("HouseholdSettlementRecorder")
-  householdSettlementsConfirmed  HouseholdSettlement[]           @relation("HouseholdSettlementConfirmer")
-  householdRecurringCreated      HouseholdRecurringExpenseTemplate[] @relation("HouseholdRecurringCreator")
-  householdRecurringPaid         HouseholdRecurringExpenseTemplate[] @relation("HouseholdRecurringPayer")
+  householdsArchived             Household[]                            @relation("HouseholdArchivedBy")
+  householdItemsCreated          HouseholdItem[]                        @relation("HouseholdItemCreator")
+  householdItemsAssigned         HouseholdItem[]                        @relation("HouseholdItemAssignee")
+  householdExpensesCreated       HouseholdExpense[]                     @relation("HouseholdExpenseCreator")
+  householdExpensesPaid          HouseholdExpense[]                     @relation("HouseholdExpensePayer")
+  householdExpenseShares         HouseholdExpenseShare[]                @relation("HouseholdExpenseShareMember")
+  householdExpenseCredits        HouseholdExpenseShare[]                @relation("HouseholdExpenseShareCreditor")
+  householdSettlementsFrom       HouseholdSettlement[]                  @relation("HouseholdSettlementFrom")
+  householdSettlementsTo         HouseholdSettlement[]                  @relation("HouseholdSettlementTo")
+  householdSettlementsRecorded   HouseholdSettlement[]                  @relation("HouseholdSettlementRecorder")
+  householdSettlementsConfirmed  HouseholdSettlement[]                  @relation("HouseholdSettlementConfirmer")
+  householdRecurringCreated      HouseholdRecurringExpenseTemplate[]    @relation("HouseholdRecurringCreator")
+  householdRecurringPaid         HouseholdRecurringExpenseTemplate[]    @relation("HouseholdRecurringPayer")
   householdRecurringParticipants HouseholdRecurringExpenseParticipant[]
-  householdBudgetsCreated        HouseholdMonthlyBudget[]             @relation("HouseholdBudgetCreator")
-  householdBudgetsUpdated        HouseholdMonthlyBudget[]             @relation("HouseholdBudgetUpdater")
-  searchTeamsOwned               SearchTeam[]                          @relation("SearchTeamOwner")
+  householdBudgetsCreated        HouseholdMonthlyBudget[]               @relation("HouseholdBudgetCreator")
+  householdBudgetsUpdated        HouseholdMonthlyBudget[]               @relation("HouseholdBudgetUpdater")
+  searchTeamsOwned               SearchTeam[]                           @relation("SearchTeamOwner")
   searchTeamMemberships          SearchTeamMember[]
-  searchTeamInvitesSent          SearchTeamInvite[]                    @relation("SearchTeamInviteSender")
-  searchTeamInvitesReceived      SearchTeamInvite[]                    @relation("SearchTeamInviteRecipient")
+  searchTeamInvitesSent          SearchTeamInvite[]                     @relation("SearchTeamInviteSender")
+  searchTeamInvitesReceived      SearchTeamInvite[]                     @relation("SearchTeamInviteRecipient")
   searchTeamListingsAdded        SearchTeamListing[]
   searchTeamVotes                SearchTeamVote[]
   searchTeamComments             SearchTeamComment[]
@@ -734,22 +741,22 @@ model Post {
 }
 
 model VisitRequest {
-  id               String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id               String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   postId           String
   requesterId      String
   ownerId          String
-  status           VisitRequestStatus   @default(PENDING)
-  calendarRevision Int                  @default(0)
-  requestedAt      DateTime             @db.Timestamptz(3)
-  proposedAt       DateTime?            @db.Timestamptz(3)
-  scheduledAt      DateTime?            @db.Timestamptz(3)
-  note             String?              @db.VarChar(500)
-  respondedAt      DateTime?            @db.Timestamptz(3)
-  createdAt        DateTime             @default(now()) @db.Timestamptz(3)
-  updatedAt        DateTime             @updatedAt @db.Timestamptz(3)
-  post             Post                 @relation(fields: [postId], references: [id], onDelete: Cascade)
-  requester        User                 @relation("VisitRequester", fields: [requesterId], references: [id], onDelete: Cascade)
-  owner            User                 @relation("VisitOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  status           VisitRequestStatus      @default(PENDING)
+  calendarRevision Int                     @default(0)
+  requestedAt      DateTime                @db.Timestamptz(3)
+  proposedAt       DateTime?               @db.Timestamptz(3)
+  scheduledAt      DateTime?               @db.Timestamptz(3)
+  note             String?                 @db.VarChar(500)
+  respondedAt      DateTime?               @db.Timestamptz(3)
+  createdAt        DateTime                @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime                @updatedAt @db.Timestamptz(3)
+  post             Post                    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  requester        User                    @relation("VisitRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  owner            User                    @relation("VisitOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   outcomes         VisitOutcome[]
   changes          VisitChange[]
   slotPreference   VisitSlotPreference?
@@ -994,14 +1001,14 @@ model SearchTeamListing {
 }
 
 model SearchTeamVote {
-  teamId   String               @db.Uuid
-  postId   String
-  userId   String
-  choice   SearchTeamVoteChoice
-  createdAt DateTime            @default(now()) @db.Timestamptz(3)
-  updatedAt DateTime            @updatedAt @db.Timestamptz(3)
-  listing  SearchTeamListing    @relation(fields: [teamId, postId], references: [teamId, postId], onDelete: Cascade)
-  user     User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  teamId    String               @db.Uuid
+  postId    String
+  userId    String
+  choice    SearchTeamVoteChoice
+  createdAt DateTime             @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime             @updatedAt @db.Timestamptz(3)
+  listing   SearchTeamListing    @relation(fields: [teamId, postId], references: [teamId, postId], onDelete: Cascade)
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([teamId, postId, userId])
   @@index([userId, updatedAt(sort: Desc)])
@@ -1023,14 +1030,14 @@ model SearchTeamComment {
 }
 
 model SearchTeamVisit {
-  teamId    String            @db.Uuid
-  visitId   String            @db.Uuid
-  postId    String
+  teamId     String            @db.Uuid
+  visitId    String            @db.Uuid
+  postId     String
   sharedById String
-  createdAt DateTime          @default(now()) @db.Timestamptz(3)
-  listing   SearchTeamListing @relation(fields: [teamId, postId], references: [teamId, postId], onDelete: Cascade)
-  visit     VisitRequest      @relation(fields: [visitId], references: [id], onDelete: Cascade)
-  sharedBy  User              @relation(fields: [sharedById], references: [id], onDelete: Cascade)
+  createdAt  DateTime          @default(now()) @db.Timestamptz(3)
+  listing    SearchTeamListing @relation(fields: [teamId, postId], references: [teamId, postId], onDelete: Cascade)
+  visit      VisitRequest      @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  sharedBy   User              @relation(fields: [sharedById], references: [id], onDelete: Cascade)
 
   @@id([teamId, visitId])
   @@index([visitId])
@@ -1129,30 +1136,30 @@ model MoveInChecklistItem {
 }
 
 model FinalizedDocumentSpace {
-  id               String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  targetType       InterestTargetType
-  postId           String?
-  targetUserId     String?
-  participantOneId String
-  participantTwoId String
-  status           FinalizedMatchStatus       @default(ACTIVE)
+  id                String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  targetType        InterestTargetType
+  postId            String?
+  targetUserId      String?
+  participantOneId  String
+  participantTwoId  String
+  status            FinalizedMatchStatus         @default(ACTIVE)
   statusBeforeClose FinalizedMatchStatus?
-  closureReason    MatchClosureReason?
-  completedAt      DateTime?                  @db.Timestamptz(3)
-  closedAt         DateTime?                  @db.Timestamptz(3)
-  reopenedAt       DateTime?                  @db.Timestamptz(3)
-  closedById       String?
-  createdAt        DateTime                  @default(now()) @db.Timestamptz(3)
-  updatedAt        DateTime                  @updatedAt @db.Timestamptz(3)
-  post             Post?                     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  targetUser       User?                     @relation("DocumentSpaceFlatmateTarget", fields: [targetUserId], references: [id], onDelete: Cascade)
-  participantOne   User                      @relation("DocumentSpaceParticipantOne", fields: [participantOneId], references: [id], onDelete: Cascade)
-  participantTwo   User                      @relation("DocumentSpaceParticipantTwo", fields: [participantTwoId], references: [id], onDelete: Cascade)
-  closedBy         User?                     @relation("DocumentSpaceClosedBy", fields: [closedById], references: [id], onDelete: SetNull)
-  documents        SharedDocument[]
-  milestones       FinalizedMatchMilestone[]
-  statusChanges    FinalizedMatchStatusChange[]
-  household        Household?
+  closureReason     MatchClosureReason?
+  completedAt       DateTime?                    @db.Timestamptz(3)
+  closedAt          DateTime?                    @db.Timestamptz(3)
+  reopenedAt        DateTime?                    @db.Timestamptz(3)
+  closedById        String?
+  createdAt         DateTime                     @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime                     @updatedAt @db.Timestamptz(3)
+  post              Post?                        @relation(fields: [postId], references: [id], onDelete: Cascade)
+  targetUser        User?                        @relation("DocumentSpaceFlatmateTarget", fields: [targetUserId], references: [id], onDelete: Cascade)
+  participantOne    User                         @relation("DocumentSpaceParticipantOne", fields: [participantOneId], references: [id], onDelete: Cascade)
+  participantTwo    User                         @relation("DocumentSpaceParticipantTwo", fields: [participantTwoId], references: [id], onDelete: Cascade)
+  closedBy          User?                        @relation("DocumentSpaceClosedBy", fields: [closedById], references: [id], onDelete: SetNull)
+  documents         SharedDocument[]
+  milestones        FinalizedMatchMilestone[]
+  statusChanges     FinalizedMatchStatusChange[]
+  household         Household?
 
   @@unique([postId, participantOneId, participantTwoId])
   @@unique([targetUserId, participantOneId, participantTwoId])
@@ -1226,36 +1233,36 @@ model FinalizedMatchMilestone {
 }
 
 model FinalizedMatchStatusChange {
-  id         String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  spaceId    String               @db.Uuid
+  id         String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  spaceId    String                 @db.Uuid
   actorId    String?
   fromStatus FinalizedMatchStatus
   toStatus   FinalizedMatchStatus
   reason     MatchClosureReason?
-  createdAt  DateTime             @default(now()) @db.Timestamptz(3)
+  createdAt  DateTime               @default(now()) @db.Timestamptz(3)
   space      FinalizedDocumentSpace @relation(fields: [spaceId], references: [id], onDelete: Cascade)
-  actor      User?                @relation("FinalizedMatchStatusActor", fields: [actorId], references: [id], onDelete: SetNull)
+  actor      User?                  @relation("FinalizedMatchStatusActor", fields: [actorId], references: [id], onDelete: SetNull)
 
   @@index([spaceId, createdAt(sort: Desc)])
   @@index([actorId, createdAt(sort: Desc)])
 }
 
 model Household {
-  id               String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  finalizedSpaceId String                  @unique @db.Uuid
-  status           HouseholdStatus         @default(ACTIVE)
-  archiveReason    HouseholdArchiveReason?
-  archivedAt       DateTime?               @db.Timestamptz(3)
-  archivedById     String?
-  createdAt        DateTime                @default(now()) @db.Timestamptz(3)
-  updatedAt        DateTime                @updatedAt @db.Timestamptz(3)
-  finalizedSpace   FinalizedDocumentSpace  @relation(fields: [finalizedSpaceId], references: [id], onDelete: Cascade)
-  archivedBy       User?                   @relation("HouseholdArchivedBy", fields: [archivedById], references: [id], onDelete: SetNull)
-  members          HouseholdMember[]
-  items            HouseholdItem[]
-  expenses         HouseholdExpense[]
+  id                        String                              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  finalizedSpaceId          String                              @unique @db.Uuid
+  status                    HouseholdStatus                     @default(ACTIVE)
+  archiveReason             HouseholdArchiveReason?
+  archivedAt                DateTime?                           @db.Timestamptz(3)
+  archivedById              String?
+  createdAt                 DateTime                            @default(now()) @db.Timestamptz(3)
+  updatedAt                 DateTime                            @updatedAt @db.Timestamptz(3)
+  finalizedSpace            FinalizedDocumentSpace              @relation(fields: [finalizedSpaceId], references: [id], onDelete: Cascade)
+  archivedBy                User?                               @relation("HouseholdArchivedBy", fields: [archivedById], references: [id], onDelete: SetNull)
+  members                   HouseholdMember[]
+  items                     HouseholdItem[]
+  expenses                  HouseholdExpense[]
   recurringExpenseTemplates HouseholdRecurringExpenseTemplate[]
-  monthlyBudgets HouseholdMonthlyBudget[]
+  monthlyBudgets            HouseholdMonthlyBudget[]
 
   @@index([status, updatedAt(sort: Desc)])
   @@index([archivedById])
@@ -1302,27 +1309,27 @@ model HouseholdItem {
 }
 
 model HouseholdExpense {
-  id          String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  householdId String                      @db.Uuid
-  createdById String
-  paidById    String
-  category    HouseholdExpenseCategory
-  title       String                      @db.VarChar(120)
-  description String?                     @db.VarChar(500)
-  amountMinor Int
-  expenseDate DateTime                    @db.Date
-  splitMethod HouseholdExpenseSplitMethod
-  status      HouseholdExpenseStatus      @default(OUTSTANDING)
-  recurringTemplateId String?              @db.Uuid
-  billingCycleStart  DateTime?             @db.Date
-  dueDate            DateTime?             @db.Date
-  createdAt   DateTime                    @default(now()) @db.Timestamptz(3)
-  updatedAt   DateTime                    @updatedAt @db.Timestamptz(3)
-  household   Household                   @relation(fields: [householdId], references: [id], onDelete: Cascade)
-  createdBy   User                        @relation("HouseholdExpenseCreator", fields: [createdById], references: [id], onDelete: Cascade)
-  paidBy      User                        @relation("HouseholdExpensePayer", fields: [paidById], references: [id], onDelete: Restrict)
-  shares      HouseholdExpenseShare[]
-  recurringTemplate HouseholdRecurringExpenseTemplate? @relation(fields: [recurringTemplateId], references: [id], onDelete: Restrict)
+  id                  String                             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  householdId         String                             @db.Uuid
+  createdById         String
+  paidById            String
+  category            HouseholdExpenseCategory
+  title               String                             @db.VarChar(120)
+  description         String?                            @db.VarChar(500)
+  amountMinor         Int
+  expenseDate         DateTime                           @db.Date
+  splitMethod         HouseholdExpenseSplitMethod
+  status              HouseholdExpenseStatus             @default(OUTSTANDING)
+  recurringTemplateId String?                            @db.Uuid
+  billingCycleStart   DateTime?                          @db.Date
+  dueDate             DateTime?                          @db.Date
+  createdAt           DateTime                           @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime                           @updatedAt @db.Timestamptz(3)
+  household           Household                          @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  createdBy           User                               @relation("HouseholdExpenseCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  paidBy              User                               @relation("HouseholdExpensePayer", fields: [paidById], references: [id], onDelete: Restrict)
+  shares              HouseholdExpenseShare[]
+  recurringTemplate   HouseholdRecurringExpenseTemplate? @relation(fields: [recurringTemplateId], references: [id], onDelete: Restrict)
 
   @@unique([recurringTemplateId, billingCycleStart])
   @@index([householdId, expenseDate(sort: Desc), createdAt(sort: Desc)])
@@ -1332,18 +1339,18 @@ model HouseholdExpense {
 }
 
 model HouseholdExpenseShare {
-  id                 String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  expenseId          String                       @db.Uuid
+  id                 String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  expenseId          String                      @db.Uuid
   memberId           String
   creditorId         String?
   shareAmountMinor   Int
-  settledAmountMinor Int                          @default(0)
+  settledAmountMinor Int                         @default(0)
   status             HouseholdExpenseShareStatus @default(OUTSTANDING)
-  createdAt          DateTime                     @default(now()) @db.Timestamptz(3)
-  updatedAt          DateTime                     @updatedAt @db.Timestamptz(3)
-  expense            HouseholdExpense             @relation(fields: [expenseId], references: [id], onDelete: Cascade)
-  member             User                         @relation("HouseholdExpenseShareMember", fields: [memberId], references: [id], onDelete: Cascade)
-  creditor           User?                        @relation("HouseholdExpenseShareCreditor", fields: [creditorId], references: [id], onDelete: Restrict)
+  createdAt          DateTime                    @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime                    @updatedAt @db.Timestamptz(3)
+  expense            HouseholdExpense            @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  member             User                        @relation("HouseholdExpenseShareMember", fields: [memberId], references: [id], onDelete: Cascade)
+  creditor           User?                       @relation("HouseholdExpenseShareCreditor", fields: [creditorId], references: [id], onDelete: Restrict)
   settlements        HouseholdSettlement[]
 
   @@unique([expenseId, memberId])
@@ -1380,27 +1387,27 @@ model HouseholdSettlement {
 }
 
 model HouseholdRecurringExpenseTemplate {
-  id          String                           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  householdId String                           @db.Uuid
-  createdById String
-  paidById    String
-  category    HouseholdExpenseCategory
-  title       String                           @db.VarChar(120)
-  description String?                          @db.VarChar(500)
-  amountMinor Int
-  splitMethod HouseholdExpenseSplitMethod
-  firstDueDate DateTime                        @db.Date
-  dueDay      Int
-  endDate     DateTime?                        @db.Date
-  status      HouseholdRecurringTemplateStatus @default(ACTIVE)
-  pausedAt    DateTime?                        @db.Timestamptz(3)
-  endedAt     DateTime?                        @db.Timestamptz(3)
-  createdAt   DateTime                         @default(now()) @db.Timestamptz(3)
-  updatedAt   DateTime                         @updatedAt @db.Timestamptz(3)
-  household   Household                        @relation(fields: [householdId], references: [id], onDelete: Cascade)
-  createdBy   User                             @relation("HouseholdRecurringCreator", fields: [createdById], references: [id], onDelete: Cascade)
-  paidBy      User                             @relation("HouseholdRecurringPayer", fields: [paidById], references: [id], onDelete: Restrict)
-  participants HouseholdRecurringExpenseParticipant[]
+  id                String                                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  householdId       String                                 @db.Uuid
+  createdById       String
+  paidById          String
+  category          HouseholdExpenseCategory
+  title             String                                 @db.VarChar(120)
+  description       String?                                @db.VarChar(500)
+  amountMinor       Int
+  splitMethod       HouseholdExpenseSplitMethod
+  firstDueDate      DateTime                               @db.Date
+  dueDay            Int
+  endDate           DateTime?                              @db.Date
+  status            HouseholdRecurringTemplateStatus       @default(ACTIVE)
+  pausedAt          DateTime?                              @db.Timestamptz(3)
+  endedAt           DateTime?                              @db.Timestamptz(3)
+  createdAt         DateTime                               @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime                               @updatedAt @db.Timestamptz(3)
+  household         Household                              @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  createdBy         User                                   @relation("HouseholdRecurringCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  paidBy            User                                   @relation("HouseholdRecurringPayer", fields: [paidById], references: [id], onDelete: Restrict)
+  participants      HouseholdRecurringExpenseParticipant[]
   generatedExpenses HouseholdExpense[]
 
   @@index([householdId, status, firstDueDate])
@@ -1483,26 +1490,29 @@ model RecentView {
 }
 
 model UserPreferences {
-  id                  String                  @id @default(cuid())
-  userId              String                  @unique
-  budgetMin           Int?
-  budgetMax           Int?
-  preferredMoveInDate DateTime?               @db.Date
-  diet                DietPreference?
-  smoking             HabitFrequency?
-  drinking            HabitFrequency?
-  sleepSchedule       SleepSchedule?
-  cleanliness         CleanlinessLevel?
-  pets                PetPreference?
-  occupationStatus    OccupationStatus?
-  commuteDestination  String?                 @db.VarChar(120)
-  commuteLatitude     Decimal?                @db.Decimal(9, 6)
-  commuteLongitude    Decimal?                @db.Decimal(9, 6)
-  preferredCommuteKm  Int?
-  createdAt           DateTime                @default(now())
-  updatedAt           DateTime                @updatedAt
-  user                User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  preferredLocalities UserPreferredLocality[]
+  id                    String                  @id @default(cuid())
+  userId                String                  @unique
+  budgetMin             Int?
+  budgetMax             Int?
+  preferredMoveInDate   DateTime?               @db.Date
+  diet                  DietPreference?
+  smoking               HabitFrequency?
+  drinking              HabitFrequency?
+  sleepSchedule         SleepSchedule?
+  cleanliness           CleanlinessLevel?
+  pets                  PetPreference?
+  occupationStatus      OccupationStatus?
+  commuteDestination    String?                 @db.VarChar(120)
+  commuteLatitude       Decimal?                @db.Decimal(9, 6)
+  commuteLongitude      Decimal?                @db.Decimal(9, 6)
+  preferredCommuteKm    Int?
+  onboardingIntent      OnboardingIntent?
+  onboardingCompletedAt DateTime?               @db.Timestamptz(3)
+  onboardingSkippedAt   DateTime?               @db.Timestamptz(3)
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+  user                  User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  preferredLocalities   UserPreferredLocality[]
 
   @@index([budgetMin, budgetMax])
   @@index([preferredMoveInDate])

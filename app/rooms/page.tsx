@@ -9,7 +9,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { SearchParamRecord } from "@/types/discovery";
 
 export const metadata: Metadata = {
-  title: "Find a Room | NestMate",
+  title: "Find a Room | Roomzi",
   description:
     "Discover rooms, shared flats, and PGs by locality, budget, commute, and transparent living-fit signals.",
 };
@@ -45,6 +45,7 @@ export default async function FindRoomPage({
       <main className="min-h-[calc(100svh-4.5rem)] bg-muted/15">
         <RoomDiscovery
           posts={discovery.listings}
+          recoverySuggestions={discovery.recoverySuggestions}
           locations={discovery.locations}
           filters={filters}
           isAuthenticated={Boolean(claims?.sub)}

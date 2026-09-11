@@ -24,12 +24,12 @@ function safeLocalPath(kind: SavedSearchKind, value: string) {
 
   let url: URL;
   try {
-    url = new URL(value, "https://nestmate.local");
+    url = new URL(value, "https://roomzi.local");
   } catch {
     return null;
   }
 
-  if (url.origin !== "https://nestmate.local") return null;
+  if (url.origin !== "https://roomzi.local") return null;
   if (kind === "PEOPLE" && url.pathname !== "/flatmates") return null;
   if (
     kind === "COMMUNITY_POSTS" &&

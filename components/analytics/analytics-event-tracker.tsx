@@ -17,7 +17,7 @@ export function AnalyticsEventTracker({
   useEffect(() => {
     if (sentRef.current) return;
     sentRef.current = true;
-    const storageKey = `nestmate:analytics:${dedupeKey}`;
+    const storageKey = `roomzi:analytics:${dedupeKey}`;
     try {
       if (window.sessionStorage.getItem(storageKey)) return;
       window.sessionStorage.setItem(storageKey, "1");

@@ -67,12 +67,94 @@ export const ROOM_OCCUPANCY_OPTIONS = [
 
 export const LOCATION_PRECISION_OPTIONS = ["Approximate", "Exact"] as const;
 
+export const REQUIREMENT_OCCUPATION_OPTIONS = [
+  "Student",
+  "Working professional",
+  "Self-employed",
+  "Freelancer",
+  "Other",
+] as const;
+
+export const REQUIREMENT_DIET_OPTIONS = [
+  "Vegetarian",
+  "Non-vegetarian",
+  "Eggetarian",
+  "Vegan",
+] as const;
+
+export const REQUIREMENT_HABIT_OPTIONS = [
+  "Never",
+  "Occasionally",
+  "Regularly",
+] as const;
+
+export const REQUIREMENT_SMOKING_OPTIONS = [
+  "Non-smoker",
+  "Occasionally",
+  "Regularly",
+] as const;
+
+export const REQUIREMENT_SLEEP_OPTIONS = [
+  "Early bird",
+  "Flexible",
+  "Night owl",
+] as const;
+
+export const REQUIREMENT_CLEANLINESS_OPTIONS = [
+  "Relaxed",
+  "Moderately tidy",
+  "Very tidy",
+] as const;
+
+export const REQUIREMENT_PET_OPTIONS = [
+  "Have a pet",
+  "Pet friendly",
+  "Prefer no pets",
+] as const;
+
+const REQUIREMENT_TAG_FIELDS = [
+  ["Status: ", "occupationStatus"],
+  ["Food: ", "diet"],
+  ["Smoking: ", "smoking"],
+  ["Drinking: ", "drinking"],
+  ["Schedule: ", "sleepSchedule"],
+  ["Cleanliness: ", "cleanliness"],
+  ["Pets: ", "pets"],
+] as const;
+
+export function parseRequirementTags(tags: string[]) {
+  const values = Object.fromEntries(
+    REQUIREMENT_TAG_FIELDS.map(([prefix, field]) => [
+      field,
+      tags.find((tag) => tag.startsWith(prefix))?.slice(prefix.length) ?? "",
+    ]),
+  ) as Record<(typeof REQUIREMENT_TAG_FIELDS)[number][1], string>;
+  const commuteTag = tags.find((tag) => /^Commute: up to \d+ km$/.test(tag));
+  const reservedPrefixes = REQUIREMENT_TAG_FIELDS.map(([prefix]) => prefix);
+
+  return {
+    ...values,
+    preferredCommuteKm: commuteTag?.match(/\d+/)?.[0] ?? "",
+    customTags: tags.filter(
+      (tag) =>
+        !reservedPrefixes.some((prefix) => tag.startsWith(prefix)) &&
+        tag !== commuteTag,
+    ),
+  };
+}
+
 export const HOUSING_OPTIONS: Record<
   CommunityPostCategory,
   { housingTypes: string[]; housingFeatures: string[] }
 > = {
   "Need a Room": {
-    housingTypes: ["Private room", "Shared room", "Either works"],
+    housingTypes: [
+      "Private room",
+      "Shared room",
+      "Entire flat",
+      "PG / co-living",
+      "Either works",
+    ],
     housingFeatures: [
       "Furnished",
       "Semi-furnished",
@@ -180,6 +262,8 @@ export function validateCommunityPost(
   );
   const isListing =
     category === "Room Available" || category === "PG Available";
+  const isRequirement =
+    category === "Need a Room" || category === "Need Flatmate";
   const latitudeInput = input.locationLatitude?.trim() ?? "";
   const longitudeInput = input.locationLongitude?.trim() ?? "";
   const hasAnyCoordinate = Boolean(latitudeInput || longitudeInput);
@@ -242,6 +326,35 @@ export function validateCommunityPost(
     customTags.some((tag) => tag.length < 2 || tag.length > 30)
   ) {
     errors.tags = "Add up to 5 tags, each between 2 and 30 characters.";
+  }
+  if (
+    isRequirement &&
+    !REQUIREMENT_OCCUPATION_OPTIONS.includes(
+      input.occupationStatus as (typeof REQUIREMENT_OCCUPATION_OPTIONS)[number],
+    )
+  ) {
+    errors.occupationStatus = "Choose your work or study status.";
+  }
+  const optionalRequirementOptions = [
+    ["diet", input.diet, REQUIREMENT_DIET_OPTIONS, "food preference"],
+    ["smoking", input.smoking, REQUIREMENT_SMOKING_OPTIONS, "smoking preference"],
+    ["drinking", input.drinking, REQUIREMENT_HABIT_OPTIONS, "drinking preference"],
+    ["sleepSchedule", input.sleepSchedule, REQUIREMENT_SLEEP_OPTIONS, "sleep schedule"],
+    ["cleanliness", input.cleanliness, REQUIREMENT_CLEANLINESS_OPTIONS, "cleanliness preference"],
+    ["pets", input.pets, REQUIREMENT_PET_OPTIONS, "pet preference"],
+  ] as const;
+  if (isRequirement) {
+    for (const [field, value, options, label] of optionalRequirementOptions) {
+      if (value && !(options as readonly string[]).includes(value)) {
+        errors[field] = `Choose a valid ${label}.`;
+      }
+    }
+    if (input.preferredCommuteKm) {
+      const commuteKm = Number(input.preferredCommuteKm);
+      if (!Number.isInteger(commuteKm) || commuteKm < 1 || commuteKm > 100) {
+        errors.preferredCommuteKm = "Choose a commute range between 1 and 100 km.";
+      }
+    }
   }
   if (
     amenities.length > 8 ||
@@ -350,12 +463,20 @@ export function validateCommunityPost(
   let mealsIncluded: boolean | null = null;
 
   if (category === "Need a Room") {
+    propertyType =
+      input.housingType === "PG / co-living"
+        ? "PG"
+        : input.housingType === "Entire flat"
+          ? "APARTMENT"
+          : null;
     roomType =
       input.housingType === "Private room"
         ? "PRIVATE_ROOM"
         : input.housingType === "Shared room"
           ? "SHARED_ROOM"
-          : null;
+          : input.housingType === "Entire flat"
+            ? "ENTIRE_PLACE"
+            : null;
     furnishingStatus =
       input.housingFeature === "Furnished"
         ? "FURNISHED"
@@ -448,6 +569,20 @@ export function validateCommunityPost(
     input.housingType,
     input.housingFeature === "No preference" ? "" : input.housingFeature,
   ];
+  const requirementTags = isRequirement
+    ? [
+        `Status: ${input.occupationStatus}`,
+        input.diet ? `Food: ${input.diet}` : "",
+        input.smoking ? `Smoking: ${input.smoking}` : "",
+        input.drinking ? `Drinking: ${input.drinking}` : "",
+        input.sleepSchedule ? `Schedule: ${input.sleepSchedule}` : "",
+        input.cleanliness ? `Cleanliness: ${input.cleanliness}` : "",
+        input.pets ? `Pets: ${input.pets}` : "",
+        input.preferredCommuteKm
+          ? `Commute: up to ${input.preferredCommuteKm} km`
+          : "",
+      ]
+    : [];
 
   return {
     success: true,
@@ -485,7 +620,11 @@ export function validateCommunityPost(
       availableSpots,
       mealsIncluded,
       amenities: isListing ? amenities : [],
-      tags: uniqueTags([...contextualTags, ...customTags]).slice(0, 8),
+      tags: uniqueTags([
+        ...contextualTags,
+        ...requirementTags,
+        ...customTags,
+      ]).slice(0, isRequirement ? 16 : 8),
     },
   };
 }

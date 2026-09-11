@@ -115,8 +115,32 @@ export type CommunityPostFormValues = {
   locationLatitude: string;
   locationLongitude: string;
   locationPrecision: string;
+  occupationStatus: string;
+  diet: string;
+  smoking: string;
+  drinking: string;
+  sleepSchedule: string;
+  cleanliness: string;
+  pets: string;
+  preferredCommuteKm: string;
   description: string;
   tags: string;
+};
+
+export type RequirementProfileDefaults = Pick<
+  CommunityPostFormValues,
+  | "amount"
+  | "moveInDate"
+  | "occupationStatus"
+  | "diet"
+  | "smoking"
+  | "drinking"
+  | "sleepSchedule"
+  | "cleanliness"
+  | "pets"
+  | "preferredCommuteKm"
+> & {
+  preferredLocalityId: string | null;
 };
 
 export type CommunityPostFormField = keyof CommunityPostFormValues;

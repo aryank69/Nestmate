@@ -75,23 +75,23 @@ export function createVisitCalendarEvent(input: VisitCalendarEventInput) {
   const modifiedAt = input.updatedAt ? new Date(input.updatedAt) : generatedAt;
   const approximateLocation = `${input.locality}, ${input.city} (approximate)`;
   const description =
-    `${cancelled ? "Cancelled" : "Accepted"} property visit arranged through NestMate. ` +
+    `${cancelled ? "Cancelled" : "Accepted"} property visit arranged through Roomzi. ` +
     `Approximate location only. Open listing: ${input.listingUrl}`;
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//NestMate//Property Visit//EN",
+    "PRODID:-//Roomzi//Property Visit//EN",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     "BEGIN:VEVENT",
-    `UID:visit-${escapeCalendarText(input.visitId)}@nestmate`,
+    `UID:visit-${escapeCalendarText(input.visitId)}@roomzi`,
     `DTSTAMP:${formatCalendarDate(generatedAt)}`,
     `LAST-MODIFIED:${formatCalendarDate(modifiedAt)}`,
     `SEQUENCE:${revision}`,
     "CLASS:PRIVATE",
     `DTSTART:${formatCalendarDate(startsAt)}`,
     `DTEND:${formatCalendarDate(endsAt)}`,
-    `SUMMARY:${escapeCalendarText(`NestMate visit: ${input.listingTitle}`)}`,
+    `SUMMARY:${escapeCalendarText(`Roomzi visit: ${input.listingTitle}`)}`,
     `LOCATION:${escapeCalendarText(approximateLocation)}`,
     `DESCRIPTION:${escapeCalendarText(description)}`,
     `URL:${escapeCalendarText(input.listingUrl)}`,
@@ -108,5 +108,5 @@ export function visitCalendarFilename(scheduledAt: Date | string) {
   const day = Number.isFinite(date.getTime())
     ? date.toISOString().slice(0, 10)
     : "visit";
-  return `nestmate-property-visit-${day}.ics`;
+  return `roomzi-property-visit-${day}.ics`;
 }

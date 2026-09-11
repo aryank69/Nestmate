@@ -27,7 +27,7 @@ new Function("module", "exports", "require", compiled)(
 const {
   MAX_REPORT_DETAILS_LENGTH,
   cleanReportDetails,
-  isValidNestMateUserId,
+  isValidRoomziUserId,
   validateReportInput,
 } = safetyModule.exports;
 
@@ -72,7 +72,7 @@ test("report details are optional and capped at the database limit", () => {
 });
 
 test("user IDs must be non-empty and stay within the database input limit", () => {
-  assert.equal(isValidNestMateUserId("user-1"), true);
-  assert.equal(isValidNestMateUserId(" "), false);
-  assert.equal(isValidNestMateUserId("a".repeat(129)), false);
+  assert.equal(isValidRoomziUserId("user-1"), true);
+  assert.equal(isValidRoomziUserId(" "), false);
+  assert.equal(isValidRoomziUserId("a".repeat(129)), false);
 });

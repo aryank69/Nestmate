@@ -289,7 +289,7 @@ export async function loadSharedDocuments(
             ? "You"
             : change.actorId === counterpartId
               ? counterpart.name
-              : "NestMate",
+              : "Roomzi",
         createdAt: change.createdAt,
       })),
     };

@@ -7,9 +7,9 @@ import { loadCommunityLocations } from "@/lib/community-data";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
-  title: "List a Property | NestMate",
+  title: "List a Property | Roomzi",
   description:
-    "List an available room, shared flat, entire flat, or PG in a NestMate locality community.",
+    "List an available room, shared flat, entire flat, or PG in a Roomzi locality community.",
 };
 
 export default async function ListPropertyPage({

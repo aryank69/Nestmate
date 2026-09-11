@@ -94,7 +94,7 @@ export function SupportCaseView({ supportCase }: { supportCase: SupportCaseDetai
           ) : (
             <div className="mt-4 rounded-2xl border border-dashed border-border px-5 py-8 text-center">
               <p className="text-sm font-semibold">No replies yet</p>
-              <p className="mt-1 text-xs text-muted-foreground">Updates from the NestMate team will appear here.</p>
+              <p className="mt-1 text-xs text-muted-foreground">Updates from the Roomzi team will appear here.</p>
             </div>
           )}
         </section>

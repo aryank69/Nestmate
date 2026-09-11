@@ -35,7 +35,7 @@ export const SHARED_DOCUMENT_CATEGORIES = [
   {
     value: "DEPOSIT_RECEIPT",
     label: "Deposit receipt",
-    description: "A receipt only—NestMate does not process the payment.",
+    description: "A receipt only—Roomzi does not process the payment.",
   },
   {
     value: "INVENTORY_SHEET",

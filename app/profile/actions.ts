@@ -97,7 +97,7 @@ export async function updateProfileAction(
     .single();
 
   if (userLookupError || !userData) {
-    return failure("We could not find your NestMate profile.");
+    return failure("We could not find your Roomzi profile.");
   }
 
   const updatedAt = new Date().toISOString();
@@ -210,7 +210,7 @@ export async function updateProfileAction(
     profile: savedProfile,
     message:
       unmatchedCount > 0
-        ? `Profile saved. ${unmatchedCount} locality ${unmatchedCount === 1 ? "was" : "were"} not found in the current NestMate locality list.`
+        ? `Profile saved. ${unmatchedCount} locality ${unmatchedCount === 1 ? "was" : "were"} not found in the current Roomzi locality list.`
         : "Profile and lifestyle preferences saved.",
   };
 }

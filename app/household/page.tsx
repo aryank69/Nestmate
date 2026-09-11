@@ -37,7 +37,7 @@ export default async function HouseholdRoute({
               <h1 className="mt-4 text-3xl font-bold tracking-[-0.04em] sm:text-4xl">Our household</h1>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
                 Coordinate recurring chores, utilities, rent reminders, shared expenses,
-                and simple house notes after move-in. NestMate never processes payments.
+                and simple house notes after move-in. Roomzi never processes payments.
               </p>
             </header>
             <HouseholdPage data={pageData} />

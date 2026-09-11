@@ -82,19 +82,36 @@ export function publicListingMetadataDescription(input: {
     .slice(0, 160);
 }
 
-export function nestMateSiteUrl() {
+export function roomziSiteUrl() {
   const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, "");
   if (configured) {
     try {
       const url = new URL(configured);
-      if (url.protocol === "http:" || url.protocol === "https:") return url.origin;
+      const validProtocol =
+        url.protocol === "https:" ||
+        (process.env.NODE_ENV !== "production" && url.protocol === "http:");
+      if (
+        validProtocol &&
+        !url.username &&
+        !url.password &&
+        url.pathname === "/" &&
+        !url.search &&
+        !url.hash
+      ) {
+        return url.origin;
+      }
     } catch {
-      // Fall back to the local app origin below.
+      // The explicit production failure below prevents unsafe canonical URLs.
     }
+  }
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "NEXT_PUBLIC_SITE_URL must be a valid HTTPS origin in production.",
+    );
   }
   return "http://localhost:3002";
 }
 
 export function publicListingUrl(postId: string) {
-  return `${nestMateSiteUrl()}/listings/${encodeURIComponent(postId)}`;
+  return `${roomziSiteUrl()}/listings/${encodeURIComponent(postId)}`;
 }

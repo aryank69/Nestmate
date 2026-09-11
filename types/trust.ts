@@ -3,7 +3,7 @@ export type TrustReason =
   | "Profile information complete"
   | "Consistent visit history"
   | "Usually responds quickly"
-  | "Active NestMate history"
+  | "Active Roomzi history"
   | "Listing recently confirmed"
   | "Verified listing details"
   | "Positive aggregated visit feedback";

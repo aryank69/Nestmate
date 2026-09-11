@@ -12,6 +12,7 @@ import {
   ChartNoAxesColumnIncreasing,
   ChevronDown,
   CircleHelp,
+  ClipboardPenLine,
   Files,
   HouseHeart,
   HeartHandshake,
@@ -24,12 +25,14 @@ import {
   ListChecks,
   ShieldCheck,
   UserRound,
+  UserSearch,
   UsersRound,
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 const primaryNavigation = [
@@ -43,6 +46,9 @@ const supportingNavigation = [
 ];
 
 const moreNavigation = [
+  { label: "Post a Requirement", href: "/post-requirement", icon: ClipboardPenLine },
+  { label: "My Requirements", href: "/my-requirements", icon: UserSearch },
+  { label: "My Listings", href: "/my-listings", icon: Building2 },
   { label: "Shortlist", href: "/shortlist", icon: HeartHandshake },
   { label: "PGs", href: "/pgs", icon: Building },
   { label: "Messages", href: "/chat", icon: MessageCircle },
@@ -121,11 +127,11 @@ export function Navbar() {
       )
       .subscribe();
     const refreshReminders = () => void refreshUnreadNotifications();
-    window.addEventListener("nestmate:reminders-changed", refreshReminders);
+    window.addEventListener("roomzi:reminders-changed", refreshReminders);
 
     return () => {
       window.clearTimeout(initialRefresh);
-      window.removeEventListener("nestmate:reminders-changed", refreshReminders);
+      window.removeEventListener("roomzi:reminders-changed", refreshReminders);
       void supabase.removeChannel(channel);
     };
   }, [refreshModeratorAccess, refreshUnreadNotifications, supabase]);
@@ -142,14 +148,14 @@ export function Navbar() {
         <Link
           href="/"
           className="group flex shrink-0 items-center gap-2.5 rounded-xl outline-none focus-visible:ring-3 focus-visible:ring-ring/25"
-          aria-label="NestMate home"
+          aria-label="Roomzi home"
           onClick={closeMenu}
         >
           <span className="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/15 transition-colors group-hover:bg-primary/90">
             <HouseHeart aria-hidden="true" className="size-5" strokeWidth={2.2} />
           </span>
           <span className="text-[1.3rem] font-semibold tracking-[-0.045em]">
-            Nest<span className="text-primary">Mate</span>
+            Room<span className="text-primary">zi</span>
           </span>
         </Link>
 
@@ -202,6 +208,7 @@ export function Navbar() {
         </nav>
 
         <div className="hidden shrink-0 items-center gap-2 xl:flex">
+          <ThemeToggle />
           <Link
             href="/notifications"
             aria-label={
@@ -233,7 +240,9 @@ export function Navbar() {
           </Link>
         </div>
 
-        <div className="relative xl:hidden">
+        <div className="flex items-center gap-2 xl:hidden">
+          <ThemeToggle />
+          <div className="relative">
           <Button
             type="button"
             variant="ghost"
@@ -253,6 +262,7 @@ export function Navbar() {
           {unreadNotifications ? (
             <span className="absolute -right-1 -top-1 size-3 rounded-full border-2 border-background bg-destructive" />
           ) : null}
+          </div>
         </div>
       </div>
 

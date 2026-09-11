@@ -106,6 +106,39 @@ export type PeopleDiscoveryProfile = {
   recommendation: RecommendationResult | null;
   isShortlisted: boolean;
   activityStage: InterestStage | null;
+  activeRequirement: {
+    id: string;
+    category: "Need a Room" | "Need Flatmate";
+    title: string;
+    locality: string;
+    city: string;
+    budgetLabel: string;
+    moveInLabel: string;
+    tags: string[];
+  } | null;
+};
+
+export type ZeroResultSuggestion = {
+  id: string;
+  title: string;
+  description: string;
+  href: string;
+  relaxedCriteria: string[];
+  resultCount: number;
+};
+
+export type RoomRecoveryCandidate = Omit<
+  ZeroResultSuggestion,
+  "resultCount"
+> & {
+  filters: RoomDiscoveryFilters;
+};
+
+export type PeopleRecoveryCandidate = Omit<
+  ZeroResultSuggestion,
+  "resultCount"
+> & {
+  filters: PeopleFilters;
 };
 
 export type CommunityPostTypeOption = {

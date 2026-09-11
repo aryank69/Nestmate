@@ -8,7 +8,7 @@ export type NotificationType =
   | "HOUSEHOLD_BILL"
   | "HOUSEHOLD_BUDGET";
 
-export type NestMateNotification = {
+export type RoomziNotification = {
   id: string;
   type: NotificationType;
   title: string;

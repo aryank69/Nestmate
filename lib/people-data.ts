@@ -11,8 +11,14 @@ import {
   calculatePeopleRecommendation,
   rankPeopleRecommendations,
 } from "@/lib/recommendations";
+import { peopleRecoveryCandidates } from "@/lib/zero-result-recovery";
 import type { CompatibilityProfile } from "@/types/compatibility";
-import type { PeopleDiscoveryProfile, PeopleFilters } from "@/types/discovery";
+import type { CommunityLocationOption } from "@/types/community";
+import type {
+  PeopleDiscoveryProfile,
+  PeopleFilters,
+  ZeroResultSuggestion,
+} from "@/types/discovery";
 
 const dietLabels = {
   VEGETARIAN: "Vegetarian",
@@ -64,6 +70,11 @@ export const DEFAULT_PEOPLE_FILTERS: PeopleFilters = {
   minimumCompatibility: null,
   preferredCommuteKm: null,
   sort: "recommended",
+};
+
+export type PeopleDiscoveryQueryOptions = {
+  requirementTypes?: Array<"NEED_ROOM" | "NEED_FLATMATE">;
+  requirementCommunityId?: string;
 };
 
 type PreferenceRecord = {
@@ -201,6 +212,7 @@ export async function loadPeopleDiscovery(
   viewerAuthUserId: string,
   filters: PeopleFilters,
   targetUserId?: string | string[],
+  options?: PeopleDiscoveryQueryOptions,
 ): Promise<PeopleDiscoveryProfile[]> {
   const viewer = await prisma.user.findUnique({
     where: { authUserId: viewerAuthUserId },
@@ -262,6 +274,21 @@ export async function loadPeopleDiscovery(
     ...viewer.documentSpacesAsParticipantOne.map(({ participantTwoId }) => participantTwoId),
     ...viewer.documentSpacesAsParticipantTwo.map(({ participantOneId }) => participantOneId),
   ];
+  const activeRequirementWhere: Prisma.PostWhereInput = {
+    type: {
+      in: options?.requirementTypes?.length
+        ? options.requirementTypes
+        : ["NEED_ROOM", "NEED_FLATMATE"],
+    },
+    status: "ACTIVE",
+    availabilityStatus: { not: "CLOSED" },
+    moderationStatus: "VISIBLE",
+    publishedAt: { not: null },
+    community: { isActive: true },
+    ...(options?.requirementCommunityId
+      ? { communityId: options.requirementCommunityId }
+      : {}),
+  };
 
   const candidates = await prisma.user.findMany({
     where: {
@@ -272,6 +299,9 @@ export async function loadPeopleDiscovery(
         { blocksCreated: { none: { blockedId: viewer.id } } },
         { blocksReceived: { none: { blockerId: viewer.id } } },
         { moderationState: { isNot: { status: "SUSPENDED" } } },
+        ...(options?.requirementTypes?.length
+          ? [{ posts: { some: activeRequirementWhere } }]
+          : []),
         ...(filters.query
           ? [{
               OR: [
@@ -301,6 +331,30 @@ export async function loadPeopleDiscovery(
           status: true,
           verifiedAt: true,
           expiresAt: true,
+        },
+      },
+      posts: {
+        where: activeRequirementWhere,
+        orderBy: [{ publishedAt: "desc" }, { id: "desc" }],
+        take: 1,
+        select: {
+          id: true,
+          type: true,
+          title: true,
+          monthlyAmountMin: true,
+          monthlyAmountMax: true,
+          moveInDate: true,
+          tags: true,
+          community: {
+            select: {
+              locality: {
+                select: {
+                  name: true,
+                  city: { select: { name: true } },
+                },
+              },
+            },
+          },
         },
       },
       preferences: {
@@ -419,6 +473,7 @@ export async function loadPeopleDiscovery(
       candidateCompatibility.pets,
       candidateCompatibility.occupationStatus,
     ].filter((value): value is string => Boolean(value));
+    const requirement = candidate.posts[0];
 
     return [{
       id: candidate.id,
@@ -429,7 +484,7 @@ export async function loadPeopleDiscovery(
       profession:
         candidate.profession ||
         candidateCompatibility.occupationStatus ||
-        "NestMate member",
+        "Roomzi member",
       organization: candidate.companyOrCollege ?? "",
       bio: candidate.bio ?? "Looking for a compatible home and flatmate.",
       budgetLabel: budgetLabel(
@@ -452,6 +507,24 @@ export async function loadPeopleDiscovery(
       activityStage:
         activityStageByUserId.get(candidate.id) ??
         (shortlistedIds.has(candidate.id) ? "SHORTLISTED" : null),
+      activeRequirement: requirement
+        ? {
+            id: requirement.id,
+            category:
+              requirement.type === "NEED_ROOM"
+                ? ("Need a Room" as const)
+                : ("Need Flatmate" as const),
+            title: requirement.title,
+            locality: requirement.community.locality.name,
+            city: requirement.community.locality.city.name,
+            budgetLabel: budgetLabel(
+              requirement.monthlyAmountMin,
+              requirement.monthlyAmountMax,
+            ),
+            moveInLabel: moveInLabel(requirement.moveInDate),
+            tags: requirement.tags,
+          }
+        : null,
       createdAt: candidate.createdAt,
       budgetSort:
         candidate.preferences.budgetMin ??
@@ -490,4 +563,39 @@ export async function loadPeopleProfile(
     targetUserId,
   );
   return profiles[0] ?? null;
+}
+
+export async function loadPeopleRecoverySuggestions(
+  viewerAuthUserId: string,
+  filters: PeopleFilters,
+  locations: CommunityLocationOption[],
+) {
+  const suggestions: ZeroResultSuggestion[] = [];
+  let hasLocalitySuggestion = false;
+
+  for (const candidate of peopleRecoveryCandidates(filters, locations)) {
+    if (candidate.id.startsWith("people-locality-") && hasLocalitySuggestion) {
+      continue;
+    }
+    const matches = await loadPeopleDiscovery(
+      viewerAuthUserId,
+      candidate.filters,
+    );
+    if (!matches.length) continue;
+
+    suggestions.push({
+      id: candidate.id,
+      title: candidate.title,
+      description: candidate.description,
+      href: candidate.href,
+      relaxedCriteria: candidate.relaxedCriteria,
+      resultCount: matches.length,
+    });
+    if (candidate.id.startsWith("people-locality-")) {
+      hasLocalitySuggestion = true;
+    }
+    if (suggestions.length >= 5) break;
+  }
+
+  return suggestions;
 }

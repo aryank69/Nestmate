@@ -86,7 +86,7 @@ export function ModerationDashboard({ data }: { data: ModerationDashboardData })
       !window.confirm(
         action === "SUSPEND"
           ? `Suspend ${item.subject.name}? They will be unable to post or message, and their content will be hidden.`
-          : "Hide this content from NestMate members?",
+          : "Hide this content from Roomzi members?",
       )
     ) {
       return;
@@ -109,7 +109,7 @@ export function ModerationDashboard({ data }: { data: ModerationDashboardData })
   };
 
   const restoreUser = (userId: string, userName: string) => {
-    if (!window.confirm(`Restore ${userName}'s NestMate access?`)) return;
+    if (!window.confirm(`Restore ${userName}'s Roomzi access?`)) return;
     setPendingId(userId);
     setFeedback(null);
     startTransition(async () => {

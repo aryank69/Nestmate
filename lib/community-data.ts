@@ -23,6 +23,7 @@ import {
   DATABASE_TO_POST_TYPE,
   formatListingOccupancy,
   formatCommunityAmount,
+  parseRequirementTags,
 } from "@/lib/community";
 import {
   createListingImageUrlMap,
@@ -653,7 +654,7 @@ export async function loadCommunityPosts(
           post.author.profession ||
           (preferences?.occupationStatus
             ? occupationLabels[preferences.occupationStatus]
-            : "NestMate member"),
+            : "Roomzi member"),
         verification: authorVerification,
         trust: authorTrust,
         compatibilityProfile,
@@ -1083,7 +1084,12 @@ export async function loadEditableCommunityPost(
   let housingFeature = "";
 
   if (postType === "Need a Room") {
-    housingType = roomTypeLabel(post.roomType);
+    housingType =
+      post.propertyType === "PG"
+        ? "PG / co-living"
+        : post.roomType === "ENTIRE_PLACE"
+          ? "Entire flat"
+          : roomTypeLabel(post.roomType);
     housingFeature =
       post.furnishingStatus === "FURNISHED"
         ? "Furnished"
@@ -1116,6 +1122,20 @@ export async function loadEditableCommunityPost(
       ? "Master bedroom"
       : roomTypeLabel(post.roomType);
   }
+
+  const requirementDetails =
+    postType === "Need a Room" || postType === "Need Flatmate"
+      ? parseRequirementTags(post.tags)
+      : null;
+  const generatedRequirementTags = new Set(
+    [
+      housingType,
+      housingFeature === "No preference" ? "" : housingFeature,
+      post.genderPreference === "ANY"
+        ? ""
+        : DATABASE_TO_GENDER[post.genderPreference],
+    ].filter(Boolean),
+  );
 
   return {
     id: post.id,
@@ -1158,8 +1178,18 @@ export async function loadEditableCommunityPost(
     locationLongitude: post.longitude?.toString() ?? "",
     locationPrecision:
       post.locationPrecision === "EXACT" ? "Exact" : "Approximate",
+    occupationStatus: requirementDetails?.occupationStatus ?? "",
+    diet: requirementDetails?.diet ?? "",
+    smoking: requirementDetails?.smoking ?? "",
+    drinking: requirementDetails?.drinking ?? "",
+    sleepSchedule: requirementDetails?.sleepSchedule ?? "",
+    cleanliness: requirementDetails?.cleanliness ?? "",
+    pets: requirementDetails?.pets ?? "",
+    preferredCommuteKm: requirementDetails?.preferredCommuteKm ?? "",
     description: post.description,
-    tags: post.tags.join(", "),
+    tags: (requirementDetails?.customTags ?? post.tags)
+      .filter((tag) => !generatedRequirementTags.has(tag))
+      .join(", "),
     images,
   };
 }

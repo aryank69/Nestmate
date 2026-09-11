@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { ensureUserProfile } from "@/lib/profile-data";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
-  isValidNestMateUserId,
+  isValidRoomziUserId,
   validateReportInput,
 } from "@/lib/trust-safety";
 import type {
@@ -150,14 +150,14 @@ export async function submitReportAction(
 
   return {
     success: true,
-    message: "Report submitted. Thank you for helping keep NestMate safe.",
+    message: "Report submitted. Thank you for helping keep Roomzi safe.",
   };
 }
 
 export async function blockUserAction(
   blockedUserId: string,
 ): Promise<TrustSafetyActionState> {
-  if (!isValidNestMateUserId(blockedUserId)) {
+  if (!isValidRoomziUserId(blockedUserId)) {
     return { success: false, message: "Choose a valid user to block." };
   }
 
@@ -201,7 +201,7 @@ export async function blockUserAction(
 export async function unblockUserAction(
   blockedUserId: string,
 ): Promise<TrustSafetyActionState> {
-  if (!isValidNestMateUserId(blockedUserId)) {
+  if (!isValidRoomziUserId(blockedUserId)) {
     return { success: false, message: "Choose a valid user to unblock." };
   }
 

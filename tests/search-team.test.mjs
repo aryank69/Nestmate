@@ -9,6 +9,7 @@ const actions = readFileSync(new URL("../app/teams/actions.ts", import.meta.url)
 const data = readFileSync(new URL("../lib/search-team-data.ts", import.meta.url), "utf8");
 const comparison = readFileSync(new URL("../lib/search-team-comparison-data.ts", import.meta.url), "utf8");
 const workspace = readFileSync(new URL("../components/teams/search-team-workspace.tsx", import.meta.url), "utf8");
+const teamsPage = readFileSync(new URL("../components/teams/search-teams-page.tsx", import.meta.url), "utf8");
 
 test("Team Mode models membership, invites, listings, votes, comments, and visit sharing", () => {
   for (const model of ["SearchTeam", "SearchTeamMember", "SearchTeamInvite", "SearchTeamListing", "SearchTeamVote", "SearchTeamComment", "SearchTeamVisit"]) {
@@ -67,4 +68,8 @@ test("workspace provides share, vote, shortlist, comments, compare, and visits",
   assert.match(workspace, /selected\.length >= 4/);
   assert.match(workspace, /addTeamListingCommentAction/);
   assert.match(workspace, /voteOnTeamListingAction/);
+});
+
+test("the create-team control submits its form", () => {
+  assert.match(teamsPage, /<Button type="submit" className="mt-4 w-full"/);
 });

@@ -111,7 +111,7 @@ test("profile trust is deterministic, bounded, and uses approved explanations", 
     "Profile information complete",
     "Consistent visit history",
     "Usually responds quickly",
-    "Active NestMate history",
+    "Active Roomzi history",
   ].includes(reason)));
 });
 

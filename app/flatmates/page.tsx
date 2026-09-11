@@ -6,7 +6,10 @@ import { PeopleDiscovery } from "@/components/people/people-discovery";
 import { loadCommunityLocations } from "@/lib/community-data";
 import { parsePeopleFilters } from "@/lib/discovery";
 import { analyticsSearchProperties } from "@/lib/analytics";
-import { loadPeopleDiscovery } from "@/lib/people-data";
+import {
+  loadPeopleDiscovery,
+  loadPeopleRecoverySuggestions,
+} from "@/lib/people-data";
 import { ensureUserProfile } from "@/lib/profile-data";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { SearchParamRecord } from "@/types/discovery";
@@ -31,13 +34,16 @@ export default async function FlatmateDiscoveryPage({
   const name =
     metadata && typeof metadata.full_name === "string"
       ? metadata.full_name
-      : email?.split("@")[0] ?? "NestMate member";
+      : email?.split("@")[0] ?? "Roomzi member";
   await ensureUserProfile({ id: claims.sub, email, name });
 
   const [profiles, locations] = await Promise.all([
     loadPeopleDiscovery(claims.sub, filters),
     loadCommunityLocations(),
   ]);
+  const recoverySuggestions = profiles.length
+    ? []
+    : await loadPeopleRecoverySuggestions(claims.sub, filters, locations);
   const lifestyleCount = [
     filters.diet,
     filters.smoking,
@@ -70,7 +76,12 @@ export default async function FlatmateDiscoveryPage({
         />
       ) : null}
       <main className="min-h-[calc(100svh-4.5rem)]">
-        <PeopleDiscovery profiles={profiles} locations={locations} filters={filters} />
+        <PeopleDiscovery
+          profiles={profiles}
+          locations={locations}
+          filters={filters}
+          recoverySuggestions={recoverySuggestions}
+        />
       </main>
     </>
   );

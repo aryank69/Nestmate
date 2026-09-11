@@ -248,7 +248,7 @@ export function ListingComparison({
       ) : null}
       {data.selectionWasTrimmed ? (
         <p role="status" className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          NestMate compares up to four listings, so only the first four selections are shown.
+          Roomzi compares up to four listings, so only the first four selections are shown.
         </p>
       ) : null}
 

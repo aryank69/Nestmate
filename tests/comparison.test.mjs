@@ -102,7 +102,7 @@ test("comparison reuses existing recommendation, commute, freshness, and verific
     "Amenities",
     "Availability date",
     "Distance & commute",
-    "Recommended for you",
+    "Living Fit",
     "Freshness",
     "Listing verification",
   ]) {

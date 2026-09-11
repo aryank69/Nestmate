@@ -102,13 +102,18 @@ test("listing availability gives clear Closed and Reserved rules", () => {
 });
 
 test("server actions check conflicts for requests, proposals, acceptance, and rescheduling", () => {
+  const ownerConflictSource = actions.slice(
+    actions.indexOf("async function ownerVisitConflictMessage"),
+    actions.indexOf("async function canManageVisitAvailability"),
+  );
+
   assert.match(actions, /ownerVisitConflictMessage/);
   assert.match(actions, /select: \{ scheduledAt: true \}/);
   assert.match(actions, /status: "ACCEPTED"/);
   assert.match(actions, /visitListingEligibility\(listing\)/);
   assert.match(actions, /error\.code === "23P01"/);
   assert.match(actions, /visit\.proposedAt \?\? visit\.requestedAt/);
-  assert.doesNotMatch(actions, /select: \{[^}]*requesterId[^}]*scheduledAt/);
+  assert.doesNotMatch(ownerConflictSource, /requesterId|postId/);
   assert.match(ui, /one-hour slot/i);
   assert.match(ui, /other bookings stay private/i);
   assert.match(ui, /listingAvailability !== "AVAILABLE"/);

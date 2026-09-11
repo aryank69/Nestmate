@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { ArrowLeft } from "lucide-react";
 
@@ -27,8 +27,13 @@ export default async function CommunityPostDetailPage({
 }) {
   const { postId } = await params;
   const supabase = await createSupabaseServerClient();
-  const { data } = await supabase.auth.getClaims();
-  const authUserId = data?.claims?.sub ?? null;
+  const { data, error } = await supabase.auth.getClaims();
+  const authUserId = data?.claims?.sub;
+  if (error || !authUserId) {
+    redirect(
+      `/login?next=${encodeURIComponent(`/community/post/${postId}`)}`,
+    );
+  }
   const [
     post,
     viewerProfile,
@@ -37,8 +42,8 @@ export default async function CommunityPostDetailPage({
     localityPulse,
   ] = await Promise.all([
     loadCommunityPostDetail(postId, authUserId),
-    authUserId ? loadUserProfile(authUserId) : Promise.resolve(null),
-    authUserId ? loadVisitRequests(authUserId, postId) : Promise.resolve([]),
+    loadUserProfile(authUserId),
+    loadVisitRequests(authUserId, postId),
     loadListingVisitSlots(postId, authUserId),
     loadLocalityPulseForPost(postId),
   ]);
@@ -48,7 +53,7 @@ export default async function CommunityPostDetailPage({
   return (
     <>
       <Navbar />
-      {authUserId ? <RecentViewTracker targetType="POST" targetId={post.id} /> : null}
+      <RecentViewTracker targetType="POST" targetId={post.id} />
       <main className="content-shell min-h-[calc(100svh-4.5rem)] py-8 sm:py-12">
         <div className="mx-auto max-w-3xl">
           <Link
@@ -62,8 +67,8 @@ export default async function CommunityPostDetailPage({
             post={post}
             viewerProfile={viewerProfile}
             localityPulse={localityPulse}
-            showSafetyActions={Boolean(authUserId)}
-            showSaveAction={Boolean(authUserId)}
+            showSafetyActions
+            showSaveAction
             detail
           />
           {post.category === "Room Available" || post.category === "PG Available" ? (
@@ -71,7 +76,7 @@ export default async function CommunityPostDetailPage({
               postId={post.id}
               postTitle={post.title}
               listingAvailability={post.availability.status}
-              isAuthenticated={Boolean(authUserId)}
+              isAuthenticated
               isOwner={post.isOwner}
               visits={visits}
               availableSlots={availableVisitSlots}

@@ -1,10 +1,12 @@
-import { LogOut, ShieldCheck } from "lucide-react";
+import { LogOut, ShieldCheck, SlidersHorizontal } from "lucide-react";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { logoutAction } from "@/app/auth/actions";
 import { Navbar } from "@/components/navbar";
 import { ProfilePage } from "@/components/profile/profile-page";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { ensureUserProfile, loadUserProfile } from "@/lib/profile-data";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -49,16 +51,28 @@ export default async function UserProfilePage() {
                 </p>
               </div>
             </div>
-            <form action={logoutAction}>
-              <Button
-                type="submit"
-                variant="outline"
-                className="w-full bg-card sm:w-auto"
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Link
+                href="/onboarding?edit=1"
+                className={cn(
+                  buttonVariants({ variant: "outline" }),
+                  "w-full bg-card sm:w-auto",
+                )}
               >
-                <LogOut aria-hidden="true" className="size-4" />
-                Log out
-              </Button>
-            </form>
+                <SlidersHorizontal aria-hidden="true" className="size-4" />
+                Discovery setup
+              </Link>
+              <form action={logoutAction}>
+                <Button
+                  type="submit"
+                  variant="outline"
+                  className="w-full bg-card sm:w-auto"
+                >
+                  <LogOut aria-hidden="true" className="size-4" />
+                  Log out
+                </Button>
+              </form>
+            </div>
           </div>
 
           <ProfilePage

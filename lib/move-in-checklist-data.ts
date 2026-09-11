@@ -116,8 +116,8 @@ export async function loadMoveInChecklist(
 
   let counterpartId: string | null = null;
   let title = "Move-in checklist";
-  let subtitle = "Finalized NestMate match";
-  let counterpartName = "NestMate member";
+  let subtitle = "Finalized Roomzi match";
+  let counterpartName = "Roomzi member";
 
   if (checklist.targetType === "LISTING") {
     const post = checklist.post;

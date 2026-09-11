@@ -144,36 +144,28 @@ export async function ensureUserProfile(identity: AuthIdentity) {
   const fallbackName =
     identity.name?.trim() ||
     identity.email?.split("@")[0] ||
-    "NestMate member";
+    "Roomzi member";
 
-  return prisma.$transaction(async (transaction) => {
-    let user = await transaction.user.findUnique({
-      where: { authUserId: identity.id },
-    });
-
-    if (!user) {
-      user = await transaction.user.create({
-        data: {
-          authUserId: identity.id,
-          name: fallbackName,
-          email: identity.email ?? null,
-        },
-      });
-    } else if (identity.email && user.email !== identity.email) {
-      user = await transaction.user.update({
-        where: { id: user.id },
-        data: { email: identity.email },
-      });
-    }
-
-    await transaction.userPreferences.upsert({
-      where: { userId: user.id },
-      create: { userId: user.id },
-      update: {},
-    });
-
-    return user;
+  // These unique-key upserts are independently idempotent. Avoiding an
+  // interactive transaction here prevents concurrent route prefetches from
+  // exhausting Prisma's transaction wait queue through Supabase's pooler.
+  const user = await prisma.user.upsert({
+    where: { authUserId: identity.id },
+    create: {
+      authUserId: identity.id,
+      name: fallbackName,
+      email: identity.email ?? null,
+    },
+    update: identity.email ? { email: identity.email } : {},
   });
+
+  await prisma.userPreferences.upsert({
+    where: { userId: user.id },
+    create: { userId: user.id },
+    update: {},
+  });
+
+  return user;
 }
 
 export async function loadUserProfile(authUserId: string) {

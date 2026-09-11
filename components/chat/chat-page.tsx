@@ -139,7 +139,7 @@ export function ChatPage({
     const { data, error } = await supabase.rpc("list_chat_users");
 
     if (error) {
-      setErrorMessage("We could not load NestMate members.");
+      setErrorMessage("We could not load Roomzi members.");
       return;
     }
 
@@ -407,7 +407,7 @@ export function ChatPage({
             Your conversations
           </h1>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            One-to-one conversations with authenticated NestMate members.
+            One-to-one conversations with authenticated Roomzi members.
           </p>
         </div>
         <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
@@ -471,7 +471,7 @@ export function ChatPage({
           {isDirectoryOpen ? (
             <div className="border-b border-border/70 bg-muted/30 p-3">
               <label htmlFor="chat-user-search" className="sr-only">
-                Search NestMate members
+                Search Roomzi members
               </label>
               <div className="relative">
                 <Search
@@ -501,7 +501,7 @@ export function ChatPage({
                         {user.name}
                       </span>
                       <span className="block truncate text-xs text-muted-foreground">
-                        {user.profession || "NestMate member"}
+                        {user.profession || "Roomzi member"}
                       </span>
                     </span>
                   </button>
@@ -570,7 +570,7 @@ export function ChatPage({
                 <h3 className="mt-4 text-sm font-semibold">No messages yet</h3>
                 <p className="mt-2 text-xs leading-5 text-muted-foreground">
                   Choose New to start a private conversation with another
-                  NestMate member.
+                  Roomzi member.
                 </p>
               </div>
             )}
@@ -610,7 +610,7 @@ export function ChatPage({
                   </h2>
                   <p className="mt-0.5 truncate text-xs text-muted-foreground">
                     {selectedConversation.otherUser.profession ||
-                      "NestMate member"}
+                      "Roomzi member"}
                   </p>
                 </div>
                 <span className="hidden items-center gap-1.5 rounded-full bg-secondary/60 px-2.5 py-1 text-[0.6875rem] font-semibold text-secondary-foreground sm:inline-flex">

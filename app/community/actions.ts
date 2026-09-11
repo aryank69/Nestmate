@@ -200,6 +200,7 @@ export async function saveCommunityPostAction(
 
     revalidatePath("/community");
     revalidatePath("/rooms");
+    revalidatePath("/my-listings");
     revalidatePath(roomPath);
     revalidatePath(
       communityPath({
@@ -241,8 +242,10 @@ export async function saveCommunityPostAction(
 
   revalidatePath("/community");
   revalidatePath("/rooms");
+  revalidatePath("/my-listings");
   revalidatePath(roomPath);
   revalidatePath("/community/post/" + data.id);
+  revalidatePath("/matches/post/" + data.id);
   return {
     success: true,
     message: "Your post is live in the community.",
@@ -267,6 +270,32 @@ export async function savePropertyListingAction(
   }
 
   return saveCommunityPostAction(postId, previousState, input);
+}
+
+export async function saveRequirementPostAction(
+  postId: string | null,
+  previousState: CommunityPostActionState,
+  input: CommunityPostFormValues,
+): Promise<CommunityPostActionState> {
+  if (
+    input.postType !== "Need a Room" &&
+    input.postType !== "Need Flatmate"
+  ) {
+    return failure("Choose Need a Room or Need a Flatmate.", {
+      postType: "Choose a requirement type.",
+    });
+  }
+
+  const result = await saveCommunityPostAction(
+    postId,
+    previousState,
+    input,
+  );
+  if (result.success) {
+    revalidatePath("/flatmates");
+    revalidatePath("/my-requirements");
+  }
+  return result;
 }
 
 export async function updatePostAvailabilityAction(
@@ -334,6 +363,8 @@ export async function updatePostAvailabilityAction(
   revalidatePath(`/community/post/${postId}`);
   revalidatePath("/saved");
   revalidatePath("/recently-viewed");
+  revalidatePath("/my-listings");
+  revalidatePath("/my-requirements");
 
   return {
     success: true,
@@ -343,6 +374,127 @@ export async function updatePostAvailabilityAction(
         : availabilityStatus === "RESERVED"
           ? "Listing marked as reserved."
           : "Listing confirmed as available.",
+    postId,
+    communityPath: roomPath,
+  };
+}
+
+export async function updateListingLifecycleAction(
+  postId: string,
+  lifecycleValue: string,
+): Promise<CommunityPostActionState> {
+  if (
+    !postId ||
+    postId.length > 128 ||
+    (lifecycleValue !== "PAUSE" && lifecycleValue !== "REOPEN")
+  ) {
+    return failure("Choose a valid listing action.");
+  }
+
+  const context = await authenticatedPostContext();
+  if (!context) {
+    return failure("Your session has expired. Please log in again.");
+  }
+
+  const ownedPost = await prisma.post.findFirst({
+    where: {
+      id: postId,
+      type: {
+        in: [
+          "NEED_ROOM",
+          "ROOM_AVAILABLE",
+          "NEED_FLATMATE",
+          "PG_AVAILABLE",
+        ],
+      },
+      status: { in: ["ACTIVE", "ARCHIVED"] },
+      moderationStatus: "VISIBLE",
+      publishedAt: { not: null },
+      author: { authUserId: context.claims.sub },
+    },
+    select: {
+      id: true,
+      type: true,
+      status: true,
+      availabilityStatus: true,
+      community: {
+        select: {
+          locality: {
+            select: {
+              slug: true,
+              city: { select: { slug: true } },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!ownedPost) {
+    return failure("This listing was not found or you do not own it.");
+  }
+
+  if (
+    lifecycleValue === "PAUSE" &&
+    (ownedPost.status !== "ACTIVE" ||
+      ownedPost.availabilityStatus === "CLOSED")
+  ) {
+    return failure("Only an active listing can be paused.");
+  }
+  if (
+    lifecycleValue === "REOPEN" &&
+    ownedPost.status !== "ARCHIVED" &&
+    ownedPost.availabilityStatus !== "CLOSED"
+  ) {
+    return failure("This listing is already open.");
+  }
+
+  const now = new Date().toISOString();
+  const values =
+    lifecycleValue === "PAUSE"
+      ? { status: "ARCHIVED", updatedAt: now }
+      : {
+          status: "ACTIVE",
+          availabilityStatus: "AVAILABLE",
+          lastConfirmedAt: now,
+          updatedAt: now,
+        };
+  const { data, error } = await context.supabase
+    .from("Post")
+    .update(values)
+    .eq("id", postId)
+    .eq("authorId", context.user.id)
+    .select("id")
+    .maybeSingle();
+
+  if (error || !data) {
+    console.error("Listing lifecycle update failed", error?.message);
+    return failure("We could not update this listing. Please try again.");
+  }
+
+  const roomPath = communityPath({
+    citySlug: ownedPost.community.locality.city.slug,
+    localitySlug: ownedPost.community.locality.slug,
+  });
+  revalidatePath("/community");
+  revalidatePath("/rooms");
+  revalidatePath("/my-listings");
+  revalidatePath("/my-requirements");
+  revalidatePath("/saved");
+  revalidatePath("/recently-viewed");
+  revalidatePath(roomPath);
+  revalidatePath(`/community/post/${postId}`);
+
+  return {
+    success: true,
+    message:
+      lifecycleValue === "PAUSE"
+        ? ownedPost.type === "NEED_ROOM" || ownedPost.type === "NEED_FLATMATE"
+          ? "Requirement paused and removed from discovery."
+          : "Listing paused and removed from discovery."
+        : ownedPost.type === "NEED_ROOM" || ownedPost.type === "NEED_FLATMATE"
+          ? "Requirement reopened and visible in discovery."
+          : "Listing reopened and visible in discovery.",
     postId,
     communityPath: roomPath,
   };
@@ -505,6 +657,8 @@ export async function deleteCommunityPostAction(
 
   revalidatePath("/community");
   revalidatePath("/rooms");
+  revalidatePath("/my-listings");
+  revalidatePath("/my-requirements");
   revalidatePath(
     communityPath({
       citySlug: ownedPost.community.locality.city.slug,

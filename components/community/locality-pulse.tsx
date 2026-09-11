@@ -56,7 +56,7 @@ export function LocalityPulseCard({
             </h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
               A quick, privacy-safe view of housing activity based on eligible
-              NestMate posts and broad search preferences.
+              Roomzi posts and broad search preferences.
             </p>
           </div>
           <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold text-muted-foreground">

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { AuthForm } from "@/components/auth/auth-form";
 import { getSafeNextPath } from "@/lib/auth";
+import { postAuthPath } from "@/lib/onboarding-data";
 import { getPublicAuthSettings } from "@/lib/supabase/auth-settings";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -20,7 +21,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const { data } = await supabase.auth.getClaims();
 
   if (data?.claims?.sub) {
-    redirect(nextPath);
+    redirect(await postAuthPath(data.claims.sub, nextPath));
   }
 
   const authSettings = await getPublicAuthSettings();

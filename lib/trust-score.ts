@@ -127,7 +127,7 @@ export function calculateUserTrustScore(evidence: UserTrustEvidence): TrustScore
   if (evidence.completedVisits >= 3) {
     score += 4;
     sources += 1;
-    reasons.push("Active NestMate history");
+    reasons.push("Active Roomzi history");
   } else if (evidence.completedVisits > 0) {
     score += 1;
     sources += 1;
@@ -153,7 +153,7 @@ export function calculateUserTrustScore(evidence: UserTrustEvidence): TrustScore
   } else if (evidence.responsiveness.level === "active") {
     score += 2;
     sources += 1;
-    reasons.push("Active NestMate history");
+    reasons.push("Active Roomzi history");
   } else if (evidence.responsiveness.level === "limited") {
     score -= 2;
     sources += 1;

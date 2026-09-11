@@ -16,6 +16,7 @@ import {
   ArrowLeft,
   Bath,
   BedDouble,
+  BriefcaseBusiness,
   Building2,
   CalendarDays,
   Car,
@@ -28,6 +29,7 @@ import {
   LoaderCircle,
   MapPin,
   MessageSquareText,
+  MoonStar,
   NotebookTabs,
   Search,
   ShieldCheck,
@@ -36,12 +38,14 @@ import {
   Type,
   UserRoundCheck,
   UsersRound,
+  Utensils,
   Wrench,
 } from "lucide-react";
 
 import {
   saveCommunityPostAction,
   savePropertyListingAction,
+  saveRequirementPostAction,
   updateCommunityPostImagesAction,
 } from "@/app/community/actions";
 import {
@@ -59,6 +63,13 @@ import {
   LOCATION_PRECISION_OPTIONS,
   PARKING_OPTIONS,
   PREFERRED_OCCUPANT_OPTIONS,
+  REQUIREMENT_CLEANLINESS_OPTIONS,
+  REQUIREMENT_DIET_OPTIONS,
+  REQUIREMENT_HABIT_OPTIONS,
+  REQUIREMENT_OCCUPATION_OPTIONS,
+  REQUIREMENT_PET_OPTIONS,
+  REQUIREMENT_SLEEP_OPTIONS,
+  REQUIREMENT_SMOKING_OPTIONS,
   ROOM_OCCUPANCY_OPTIONS,
   validateCommunityPost,
 } from "@/lib/community";
@@ -78,6 +89,7 @@ import type {
   CommunityPostFormField,
   CommunityPostFormInitial,
   CommunityPostFormValues,
+  RequirementProfileDefaults,
 } from "@/types/community";
 
 type PostTypeConfig = {
@@ -103,7 +115,7 @@ const postTypeOptions: PostTypeConfig[] = [
     icon: Search,
     amountLabel: "Monthly budget",
     dateLabel: "Move-in date",
-    housingTypeLabel: "Preferred room type",
+    housingTypeLabel: "Preferred place type",
     housingFeatureLabel: "Furnishing preference",
     descriptionPlaceholder:
       "Share your preferred area, commute needs, lifestyle, and anything a potential flatmate should know...",
@@ -167,6 +179,11 @@ const propertyPostTypeOptions: PostTypeConfig[] = [
   postTypeOptions[3],
 ];
 
+const requirementPostTypeOptions: PostTypeConfig[] = [
+  postTypeOptions[0],
+  postTypeOptions[2],
+];
+
 const initialActionState: CommunityPostActionState = {
   success: false,
   message: "",
@@ -200,13 +217,17 @@ function FieldError({ id, message }: { id: string; message?: string }) {
   );
 }
 
-function emptyValues(communityId: string): CommunityPostFormValues {
+function emptyValues(
+  communityId: string,
+  defaults?: RequirementProfileDefaults,
+  initialPostType = "",
+): CommunityPostFormValues {
   return {
-    postType: "",
+    postType: initialPostType,
     communityId,
     title: "",
-    amount: "",
-    moveInDate: "",
+    amount: defaults?.amount ?? "",
+    moveInDate: defaults?.moveInDate ?? "",
     genderPreference: "",
     housingType: "",
     housingFeature: "",
@@ -221,6 +242,14 @@ function emptyValues(communityId: string): CommunityPostFormValues {
     locationLatitude: "",
     locationLongitude: "",
     locationPrecision: "Approximate",
+    occupationStatus: defaults?.occupationStatus ?? "",
+    diet: defaults?.diet ?? "",
+    smoking: defaults?.smoking ?? "",
+    drinking: defaults?.drinking ?? "",
+    sleepSchedule: defaults?.sleepSchedule ?? "",
+    cleanliness: defaults?.cleanliness ?? "",
+    pets: defaults?.pets ?? "",
+    preferredCommuteKm: defaults?.preferredCommuteKm ?? "",
     description: "",
     tags: "",
   };
@@ -234,6 +263,8 @@ export function CreatePostFlow({
   lockedCommunity,
   authUserId,
   flow = "community",
+  profileDefaults,
+  initialPostType,
 }: {
   locations: CommunityLocationOption[];
   initialCity: string;
@@ -241,7 +272,9 @@ export function CreatePostFlow({
   initialPost?: CommunityPostFormInitial;
   lockedCommunity?: CommunityLocationOption;
   authUserId: string;
-  flow?: "community" | "property";
+  flow?: "community" | "property" | "requirement";
+  profileDefaults?: RequirementProfileDefaults;
+  initialPostType?: "Need a Room" | "Need Flatmate";
 }) {
   const router = useRouter();
   const requestedLocation =
@@ -257,12 +290,19 @@ export function CreatePostFlow({
   const [step, setStep] = useState<1 | 2>(initialPost ? 2 : 1);
   const [selectedCity, setSelectedCity] = useState(requestedLocation?.city ?? "");
   const [values, setValues] = useState<CommunityPostFormValues>(
-    initialPost ?? emptyValues(requestedLocation?.id ?? ""),
+    initialPost ??
+      emptyValues(
+        requestedLocation?.id ?? "",
+        profileDefaults,
+        initialPostType,
+      ),
   );
   const [selectedPostTypeId, setSelectedPostTypeId] = useState(
     initialPost
       ? postTypeOptions.find((option) => option.value === initialPost.postType)?.id ?? ""
-      : "",
+      : requirementPostTypeOptions.find(
+          (option) => option.value === initialPostType,
+        )?.id ?? "",
   );
   const [clientErrors, setClientErrors] = useState<
     Partial<Record<CommunityPostFormField, string>>
@@ -300,7 +340,11 @@ export function CreatePostFlow({
   const [imageSaveError, setImageSaveError] = useState("");
   const saveAction = useMemo(
     () =>
-      (flow === "property" ? savePropertyListingAction : saveCommunityPostAction)
+      (flow === "property"
+        ? savePropertyListingAction
+        : flow === "requirement"
+          ? saveRequirementPostAction
+          : saveCommunityPostAction)
         .bind(null, initialPost?.id ?? null),
     [flow, initialPost?.id],
   );
@@ -310,7 +354,11 @@ export function CreatePostFlow({
   );
   const postType = values.postType as CommunityPostCategory;
   const availablePostTypeOptions =
-    flow === "property" ? propertyPostTypeOptions : postTypeOptions;
+    flow === "property"
+      ? propertyPostTypeOptions
+      : flow === "requirement"
+        ? requirementPostTypeOptions
+        : postTypeOptions;
   const config =
     availablePostTypeOptions.find((option) => option.id === selectedPostTypeId) ??
     availablePostTypeOptions.find((option) => option.value === postType);
@@ -329,6 +377,8 @@ export function CreatePostFlow({
   const returnPath =
     flow === "property"
       ? "/rooms"
+      : flow === "requirement"
+        ? "/flatmates"
       : actionState.communityPath ??
         (currentLocation ? communityPath(currentLocation) : "/community");
   const mapPreview = useMemo(() => {
@@ -475,13 +525,13 @@ export function CreatePostFlow({
 
   useEffect(() => {
     if (
-      flow === "property" &&
+      (flow === "property" || flow === "requirement") &&
       actionState.success &&
       actionState.postId &&
       imageSaveState === "complete"
     ) {
       router.replace(
-        "/community/post/" + encodeURIComponent(actionState.postId),
+        "/matches/post/" + encodeURIComponent(actionState.postId),
       );
     }
   }, [
@@ -596,13 +646,18 @@ export function CreatePostFlow({
         </p>
         <Link
           href={
-            flow === "property" && actionState.postId
-              ? "/community/post/" + encodeURIComponent(actionState.postId)
+            (flow === "property" || flow === "requirement") &&
+            actionState.postId
+              ? "/matches/post/" + encodeURIComponent(actionState.postId)
               : returnPath
           }
           className={cn(buttonVariants({ size: "lg" }), "mt-8")}
         >
-          {flow === "property" ? "View Your Listing" : "View Locality Community"}
+          {flow === "property"
+            ? "View Listing Matches"
+            : flow === "requirement"
+              ? "View Requirement Matches"
+              : "View Locality Community"}
         </Link>
       </div>
     );
@@ -655,7 +710,11 @@ export function CreatePostFlow({
     <div className="mx-auto max-w-4xl">
       <Link href={returnPath} className="inline-flex items-center gap-2 rounded-lg text-sm font-semibold text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/25">
         <ArrowLeft aria-hidden="true" className="size-4" />
-        {flow === "property" ? "Back to Find a Room" : "Back to Locality Community"}
+        {flow === "property"
+          ? "Back to Find a Room"
+          : flow === "requirement"
+            ? "Back to Find a Roommate"
+            : "Back to Locality Community"}
       </Link>
 
       {!initialPost ? (
@@ -670,12 +729,18 @@ export function CreatePostFlow({
         <section className="mt-8">
           <p className="text-sm font-semibold text-primary">Step 1 of 2</p>
           <h1 className="mt-2 text-3xl font-semibold tracking-[-0.045em] sm:text-5xl">
-            {flow === "property" ? "What are you listing?" : "What would you like to post?"}
+            {flow === "property"
+              ? "What are you listing?"
+              : flow === "requirement"
+                ? "What do you need?"
+                : "What would you like to post?"}
           </h1>
           <p className="mt-4 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
             {flow === "property"
               ? "Choose the property option that best describes the available home."
-              : "Choose the option that best matches your housing need."}
+              : flow === "requirement"
+                ? "Share a focused requirement so the right locality community and compatible people can find you."
+                : "Choose the option that best matches your housing need."}
           </p>
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
             {availablePostTypeOptions.map((option) => {
@@ -739,6 +804,33 @@ export function CreatePostFlow({
               <SelectField id="genderPreference" label="Gender preference" value={values.genderPreference} onChange={(value) => updateField("genderPreference", value)} icon={UsersRound} options={["Any gender", "Women only", "Men only"].map((value) => ({ value, label: value }))} error={errors.genderPreference} placeholder="Choose preference" />
               <SelectField id="housingType" label={config.housingTypeLabel} value={values.housingType} onChange={(value) => updateField("housingType", value)} icon={Home} options={HOUSING_OPTIONS[postType].housingTypes.map((value) => ({ value, label: value }))} error={errors.housingType} placeholder="Choose option" />
               <SelectField id="housingFeature" label={config.housingFeatureLabel} value={values.housingFeature} onChange={(value) => updateField("housingFeature", value)} icon={BedDouble} options={HOUSING_OPTIONS[postType].housingFeatures.map((value) => ({ value, label: value }))} error={errors.housingFeature} placeholder="Choose option" wide />
+
+              {postType === "Need a Room" || postType === "Need Flatmate" ? (
+                <section className="rounded-2xl border border-border/80 bg-muted/25 p-4 sm:col-span-2 sm:p-5">
+                  <div className="flex items-start gap-3">
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-secondary-foreground">
+                      <UserRoundCheck aria-hidden="true" className="size-5" />
+                    </span>
+                    <div>
+                      <h2 className="text-base font-semibold">Your fit and routine</h2>
+                      <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                        We prefilled available profile preferences. Only the choices shown here are published with this requirement.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 grid gap-x-4 gap-y-5 border-t border-border/70 pt-5 sm:grid-cols-2">
+                    <SelectField id="occupationStatus" label="Occupation / status" value={values.occupationStatus} onChange={(value) => updateField("occupationStatus", value)} icon={BriefcaseBusiness} options={REQUIREMENT_OCCUPATION_OPTIONS.map((value) => ({ value, label: value }))} error={errors.occupationStatus} placeholder="Choose status" />
+                    <TextField id="preferredCommuteKm" label="Preferred commute range" optional value={values.preferredCommuteKm} onChange={(value) => updateField("preferredCommuteKm", value)} icon={MapPin} placeholder="e.g. 10" error={errors.preferredCommuteKm} help="Share only a range in kilometres; your destination stays private." type="number" min={1} max={100} />
+                    <SelectField id="diet" label="Food preference" optional value={values.diet} onChange={(value) => updateField("diet", value)} icon={Utensils} options={REQUIREMENT_DIET_OPTIONS.map((value) => ({ value, label: value }))} error={errors.diet} placeholder="Prefer not to say" />
+                    <SelectField id="smoking" label="Smoking" optional value={values.smoking} onChange={(value) => updateField("smoking", value)} icon={Sparkles} options={REQUIREMENT_SMOKING_OPTIONS.map((value) => ({ value, label: value }))} error={errors.smoking} placeholder="Prefer not to say" />
+                    <SelectField id="drinking" label="Drinking" optional value={values.drinking} onChange={(value) => updateField("drinking", value)} icon={Sparkles} options={REQUIREMENT_HABIT_OPTIONS.map((value) => ({ value, label: value }))} error={errors.drinking} placeholder="Prefer not to say" />
+                    <SelectField id="sleepSchedule" label="Sleep schedule" optional value={values.sleepSchedule} onChange={(value) => updateField("sleepSchedule", value)} icon={MoonStar} options={REQUIREMENT_SLEEP_OPTIONS.map((value) => ({ value, label: value }))} error={errors.sleepSchedule} placeholder="Prefer not to say" />
+                    <SelectField id="cleanliness" label="Cleanliness" optional value={values.cleanliness} onChange={(value) => updateField("cleanliness", value)} icon={Sparkles} options={REQUIREMENT_CLEANLINESS_OPTIONS.map((value) => ({ value, label: value }))} error={errors.cleanliness} placeholder="Prefer not to say" />
+                    <SelectField id="pets" label="Pets" optional value={values.pets} onChange={(value) => updateField("pets", value)} icon={Home} options={REQUIREMENT_PET_OPTIONS.map((value) => ({ value, label: value }))} error={errors.pets} placeholder="Prefer not to say" />
+                  </div>
+                </section>
+              ) : null}
 
               {supportsListingImages(postType) ? (
                 <section className="rounded-2xl border border-border/80 bg-muted/25 p-4 sm:col-span-2 sm:p-5">
@@ -885,7 +977,9 @@ export function CreatePostFlow({
                     ? "Save Changes"
                     : flow === "property"
                       ? "Publish Listing"
-                      : "Publish Post"}
+                      : flow === "requirement"
+                        ? "Publish Requirement"
+                        : "Publish Post"}
               </Button>
             </div>
           </form>

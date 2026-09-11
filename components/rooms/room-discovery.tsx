@@ -22,11 +22,15 @@ import {
   RoomListingActions,
 } from "@/components/rooms/room-compare";
 import { ListingRealityScoreIndicator } from "@/components/trust/listing-reality-score";
+import { ZeroResultRecovery } from "@/components/discovery/zero-result-recovery";
 import { buttonVariants } from "@/components/ui/button";
 import { activeRoomFilterCount } from "@/lib/room-discovery";
 import { cn } from "@/lib/utils";
 import type { CommunityLocationOption, CommunityPost } from "@/types/community";
-import type { RoomDiscoveryFilters } from "@/types/discovery";
+import type {
+  RoomDiscoveryFilters,
+  ZeroResultSuggestion,
+} from "@/types/discovery";
 
 const inputClassName =
   "h-11 w-full rounded-xl border border-input bg-background px-3 text-sm text-foreground outline-none transition-[border-color,box-shadow] focus:border-primary focus:ring-3 focus:ring-ring/15";
@@ -89,14 +93,16 @@ function ScorePill({ post }: { post: CommunityPost }) {
   );
 }
 
-function ListingCard({
+export function RoomListingCard({
   post,
   isAuthenticated,
 }: {
   post: CommunityPost;
   isAuthenticated: boolean;
 }) {
-  const detailHref = `/community/post/${post.id}`;
+  const detailHref = isAuthenticated
+    ? `/community/post/${post.id}`
+    : `/listings/${post.id}`;
   const messageHref = `/chat?user=${encodeURIComponent(post.author.authUserId)}&post=${encodeURIComponent(post.id)}`;
   const details = post.listingDetails;
 
@@ -215,11 +221,13 @@ function ListingCard({
 
 export function RoomDiscovery({
   posts,
+  recoverySuggestions,
   locations,
   filters,
   isAuthenticated,
 }: {
   posts: CommunityPost[];
+  recoverySuggestions: ZeroResultSuggestion[];
   locations: CommunityLocationOption[];
   filters: RoomDiscoveryFilters;
   isAuthenticated: boolean;
@@ -326,7 +334,7 @@ export function RoomDiscovery({
 
               <div className="flex flex-col gap-3 border-t border-border/65 pt-4 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-xs text-muted-foreground">
-                  {activeFilters ? `${activeFilters} active filter${activeFilters === 1 ? "" : "s"}` : "Showing available homes across NestMate communities"}
+                  {activeFilters ? `${activeFilters} active filter${activeFilters === 1 ? "" : "s"}` : "Showing available homes across Roomzi communities"}
                 </p>
                 <div className="flex gap-2">
                   {activeFilters ? <Link href="/rooms" className={buttonVariants({ variant: "ghost" })}>Clear</Link> : null}
@@ -363,7 +371,7 @@ export function RoomDiscovery({
           <RoomCompareProvider>
             <div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
               {posts.map((post) => (
-                <ListingCard key={post.id} post={post} isAuthenticated={isAuthenticated} />
+                <RoomListingCard key={post.id} post={post} isAuthenticated={isAuthenticated} />
               ))}
             </div>
           </RoomCompareProvider>
@@ -378,6 +386,12 @@ export function RoomDiscovery({
                 ? "Try a nearby locality, a wider budget, or remove one of the score filters."
                 : "Be the first to add an available room, shared flat, or PG. Published listings appear here automatically."}
             </p>
+            {activeFilters ? (
+              <ZeroResultRecovery
+                suggestions={recoverySuggestions}
+                resultLabel="possible home"
+              />
+            ) : null}
             <div className="mt-5 flex flex-col justify-center gap-2 sm:flex-row">
               {activeFilters ? (
                 <Link href="/rooms" className={buttonVariants({ variant: "outline" })}>Clear filters</Link>

@@ -80,7 +80,7 @@ export function RemindersPage({
       setReminders((current) =>
         current.filter(({ id }) => id !== reminder.id),
       );
-      window.dispatchEvent(new Event("nestmate:reminders-changed"));
+      window.dispatchEvent(new Event("roomzi:reminders-changed"));
       setPendingId(null);
     });
   };

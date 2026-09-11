@@ -85,7 +85,7 @@ export function MoveInChecklist({
         </div>
         <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-3 text-xs leading-5 text-amber-900">
           Store only coordination notes. Never enter bank details, payment credentials,
-          full ID numbers, or document images. NestMate does not process payments or
+          full ID numbers, or document images. Roomzi does not process payments or
           create legal agreements.
         </p>
         {checklist.isReadOnly ? (

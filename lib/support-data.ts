@@ -81,7 +81,7 @@ export async function loadSupportCase(
       senderRole: message.senderRole as "USER" | "MODERATOR",
       senderName:
         (message.sender as { name?: string } | null)?.name ??
-        (message.senderRole === "MODERATOR" ? "NestMate support" : context.user.name),
+        (message.senderRole === "MODERATOR" ? "Roomzi support" : context.user.name),
       body: message.body as string,
       createdAt: message.createdAt as string,
     })),

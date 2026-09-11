@@ -17,15 +17,29 @@ export function resolveDatabaseUrl(
     urlTemplate.includes(value),
   );
 
-  if (!placeholder) {
-    return urlTemplate;
+  let resolved = urlTemplate;
+  if (placeholder) {
+    if (!password) {
+      throw new Error(
+        `DATABASE_PASSWORD is required while ${variableName} contains a password placeholder.`,
+      );
+    }
+    resolved = resolved.replace(placeholder, encodeURIComponent(password));
   }
 
-  if (!password) {
+  const sslMode = resolved.match(/[?&]sslmode=([^&]*)/i)?.[1]?.toLowerCase();
+  if (!sslMode) {
+    resolved += `${resolved.includes("?") ? "&" : "?"}uselibpqcompat=true&sslmode=require`;
+  } else if (!new Set(["require", "verify-ca", "verify-full"]).has(sslMode)) {
     throw new Error(
-      `DATABASE_PASSWORD is required while ${variableName} contains a password placeholder.`,
+      `${variableName} must require TLS with sslmode=require, verify-ca, or verify-full.`,
     );
+  } else if (
+    sslMode === "require" &&
+    !/[?&]uselibpqcompat=true(?:&|$)/i.test(resolved)
+  ) {
+    resolved += "&uselibpqcompat=true";
   }
 
-  return urlTemplate.replace(placeholder, encodeURIComponent(password));
+  return resolved;
 }

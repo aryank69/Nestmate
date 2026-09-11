@@ -144,7 +144,7 @@ export async function loadRecentViews(viewerId: string) {
       eyebrow: "Flatmate profile",
       description:
         [user.profession, user.companyOrCollege].filter(Boolean).join(" · ") ||
-        "NestMate member",
+        "Roomzi member",
       details: [
         formatBudget(
           user.preferences?.budgetMin ?? null,

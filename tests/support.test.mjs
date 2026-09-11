@@ -43,7 +43,7 @@ test("support request validation accepts every intended category and requires us
     assert.equal(
       validateSupportCaseInput({
         category,
-        subject: "Help with my NestMate account",
+        subject: "Help with my Roomzi account",
         description: "I need help understanding a recent decision on my account.",
       }).success,
       true,

@@ -3,8 +3,9 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { getSafeNextPath } from "@/lib/auth";
+import { getSafeNextPath, resolveTrustedSiteOrigin } from "@/lib/auth";
 import { trackProductAnalyticsEvent } from "@/lib/analytics.server";
+import { postAuthPath } from "@/lib/onboarding-data";
 import { prisma } from "@/lib/prisma";
 import { ensureUserProfile } from "@/lib/profile-data";
 import {
@@ -22,24 +23,20 @@ function errorState(message: string): AuthFormState {
 
 async function getRequestOrigin() {
   const requestHeaders = await headers();
-  const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
-
-  if (configuredSiteUrl) {
-    return configuredSiteUrl;
-  }
-
   const origin = requestHeaders.get("origin");
-  if (origin) {
-    return origin;
-  }
-
   const host =
     requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host");
   const protocol =
     requestHeaders.get("x-forwarded-proto") ??
     (host?.startsWith("localhost") ? "http" : "https");
+  const fallbackOrigin = origin ??
+    (host ? `${protocol}://${host}` : "http://localhost:3002");
 
-  return host ? `${protocol}://${host}` : "http://localhost:3000";
+  return resolveTrustedSiteOrigin({
+    configuredSiteUrl: process.env.NEXT_PUBLIC_SITE_URL,
+    fallbackOrigin,
+    production: process.env.NODE_ENV === "production",
+  });
 }
 
 export async function loginAction(
@@ -80,11 +77,11 @@ export async function loginAction(
     console.error("[auth:login] Profile synchronization failed", profileError);
     await supabase.auth.signOut();
     return errorState(
-      "Your login worked, but NestMate could not finish loading your profile. Please try again.",
+      "Your login worked, but Roomzi could not finish loading your profile. Please try again.",
     );
   }
 
-  redirect(next);
+  redirect(await postAuthPath(data.user.id, next));
 }
 
 export async function signupAction(
@@ -114,7 +111,20 @@ export async function signupAction(
   }
 
   const supabase = await createSupabaseServerClient();
-  const origin = await getRequestOrigin();
+  let origin: string;
+  try {
+    origin = await getRequestOrigin();
+  } catch (configurationError) {
+    console.error("[auth:signup] Invalid production site URL", {
+      error:
+        configurationError instanceof Error
+          ? configurationError.message
+          : "Unknown configuration error",
+    });
+    return errorState(
+      "Account creation is temporarily unavailable because sign-in links are not configured correctly.",
+    );
+  }
   const callbackUrl = new URL("/auth/callback", origin);
   callbackUrl.searchParams.set("next", next);
 
@@ -153,7 +163,7 @@ export async function signupAction(
         await supabase.auth.signOut();
       }
       return errorState(
-        "Your account was created, but NestMate could not finish setting up your profile. Please try logging in again.",
+        "Your account was created, but Roomzi could not finish setting up your profile. Please try logging in again.",
       );
     }
   }
@@ -181,7 +191,7 @@ export async function signupAction(
   }
 
   if (data.session) {
-    redirect(next);
+    redirect(await postAuthPath(data.session.user.id, next));
   }
 
   return {
